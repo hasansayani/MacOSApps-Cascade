@@ -20,13 +20,22 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    private static let migrationKey = "settings.migration"
+
     private init() {
+        var loaded = CascadeSettings()
         if let data = UserDefaults.standard.data(forKey: Self.key),
            let decoded = try? JSONDecoder().decode(CascadeSettings.self, from: data) {
-            settings = decoded.sanitized()
-        } else {
-            settings = CascadeSettings()
+            loaded = decoded.sanitized()
         }
+        // 2.0.1 defaulted to gathering every window onto one display. Windows now stay on their own
+        // display; move existing settings over once (users can still opt back in).
+        if UserDefaults.standard.integer(forKey: Self.migrationKey) < 1 {
+            loaded.displayMode = .eachDisplay
+            UserDefaults.standard.set(1, forKey: Self.migrationKey)
+        }
+        settings = loaded
+        save()
     }
 
     private func save() {

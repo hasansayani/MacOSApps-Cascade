@@ -179,5 +179,29 @@ test("settings round-trip and tolerate missing keys") {
     check(Shortcut.defaultCascadeAll.displayString == "⌃⌥⇧C", "display string")
 }
 
+test("windows are assigned to the display they are on") {
+    // Built-in display on the left, a 4K display to its right, and one above the built-in display.
+    let builtIn = CGRect(x: 0, y: 0, width: 1800, height: 1169)
+    let external = CGRect(x: 1800, y: -400, width: 3840, height: 2160)
+    let above = CGRect(x: 0, y: -1080, width: 1920, height: 1080)
+    let displays = [builtIn, external, above]
+    func on(_ r: CGRect?) -> Int { DisplayAssigner.index(for: r, displays: displays, fallback: 0) }
+    check(on(CGRect(x: 2500, y: 200, width: 1200, height: 800)) == 1, "inside external")
+    check(on(CGRect(x: 100, y: -900, width: 800, height: 600)) == 2, "inside display above")
+    check(on(CGRect(x: 1500, y: 100, width: 1000, height: 600)) == 1, "straddling: most area wins")
+    check(on(CGRect(x: 1500, y: 100, width: 500, height: 600)) == 0, "straddling: most area wins (other way)")
+    check(on(CGRect(x: 9000, y: 300, width: 400, height: 300)) == 1, "off-screen: nearest display")
+    check(on(nil) == 0, "unknown frame: fallback")
+    check(DisplayAssigner.index(for: .zero, displays: [], fallback: 4) == 4, "no displays: fallback")
+}
+
+test("each display gets its own plan sized to that display") {
+    let s = CascadeSettings()
+    check(s.displayMode == .eachDisplay, "windows stay on their display by default")
+    let external = CGRect(x: 1800, y: -400, width: 3840, height: 2135)
+    let plan = Planner.plan(windows: windows([("a", 3)]), area: external, settings: s)
+    check(plan.groups.flatMap(\.frames).allSatisfy { external.contains($0) }, "frames stay on the external display")
+}
+
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

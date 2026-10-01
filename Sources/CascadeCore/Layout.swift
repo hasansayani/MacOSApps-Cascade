@@ -103,3 +103,27 @@ public enum CascadeLayout {
                height: min(max(size.height, min(minimumSize.height, bounds.height)), bounds.height))
     }
 }
+
+public enum DisplayAssigner {
+    /// The display a window belongs to: the one it overlaps most. A window entirely off-screen goes to
+    /// the nearest display; one with no known frame goes to `fallback`. Minimized and hidden windows
+    /// keep their last frame, so they return to the display they came from.
+    public static func index(for frame: CGRect?, displays: [CGRect], fallback: Int) -> Int {
+        guard let frame, !displays.isEmpty else { return fallback }
+        var best = -1
+        var bestArea: CGFloat = 0
+        for (i, d) in displays.enumerated() {
+            let overlap = frame.intersection(d)
+            let area = overlap.isNull ? 0 : overlap.width * overlap.height
+            if area > bestArea { best = i; bestArea = area }
+        }
+        if best >= 0 { return best }
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        func distance(_ d: CGRect) -> CGFloat {
+            let dx = max(d.minX - center.x, 0, center.x - d.maxX)
+            let dy = max(d.minY - center.y, 0, center.y - d.maxY)
+            return dx * dx + dy * dy
+        }
+        return displays.indices.min { distance(displays[$0]) < distance(displays[$1]) } ?? fallback
+    }
+}

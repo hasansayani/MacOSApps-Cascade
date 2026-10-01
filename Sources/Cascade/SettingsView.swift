@@ -71,8 +71,8 @@ struct SettingsView: View {
 
             Section("Displays") {
                 Picker("Cascade", selection: s.displayMode) {
-                    Text("Everything onto the display under the pointer").tag(DisplayMode.pointerScreen)
-                    Text("Each display separately").tag(DisplayMode.eachDisplay)
+                    Text("Keep windows on their own display").tag(DisplayMode.eachDisplay)
+                    Text("Gather all windows onto the display under the pointer").tag(DisplayMode.pointerScreen)
                 }
                 .labelsHidden()
                 .pickerStyle(.radioGroup)

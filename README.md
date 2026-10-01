@@ -35,7 +35,8 @@ The cascade icon appears in the menu bar.
 | Snap by dragging | Hold ⇧ while dragging a window, then drop it on a group |
 
 Everything is also in the menu bar menu. Opening Cascade again from Finder or Spotlight opens
-**Settings**. Cascade only arranges normal windows on the current Space; full-screen windows,
+**Settings**. With several displays, each display's windows are cascaded on that display.
+Cascade only arranges normal windows on the current Space; full-screen windows,
 panels and dialogs are left alone.
 
 ## Settings
@@ -53,7 +54,9 @@ A live preview at the top of Settings shows the resulting layout.
   - *Manual*: pin apps to specific groups. Apps you don't pin are spread across the rest.
 - **Snapping**: turn drag-to-snap on or off, choose its modifier key, and enable ⌃⌥1–9. A snapped
   window stays in its group until it closes or you choose *Reset Snapped Windows*.
-- **Displays**: put everything on the display under the pointer, or cascade each display separately.
+- **Displays**: each display gets its own cascade, and windows stay on the display they're on,
+  including minimized windows and windows of hidden apps. You can instead gather every window onto
+  the display under the pointer.
 - **Keyboard shortcuts**: click a shortcut, then press a new one. Esc cancels; Delete clears it.
 - **Launch at login**.
 

@@ -18,10 +18,10 @@ public enum GroupingMode: String, Codable, CaseIterable, Sendable {
 
 /// Which display(s) a cascade arranges.
 public enum DisplayMode: String, Codable, CaseIterable, Sendable {
+    /// Cascade each display's windows on that display (default).
+    case eachDisplay
     /// Gather every window onto the display under the pointer.
     case pointerScreen
-    /// Cascade each display's windows on that display.
-    case eachDisplay
 }
 
 /// Modifier held while dropping a dragged window to snap it into a cascade group.
@@ -87,7 +87,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     public var appGroups: [String: Int] = [:]
 
     // Displays
-    public var displayMode: DisplayMode = .pointerScreen
+    public var displayMode: DisplayMode = .eachDisplay
 
     // Snapping
     public var dragToSnap: Bool = true

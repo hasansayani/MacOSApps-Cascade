@@ -93,7 +93,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func cascade(_ scope: Scope) { engine.cascade(scope, settings: settings) }
 
     private func snapFocused(to group: Int) {
-        guard group < currentGroupCount() else { NSSound.beep(); return }
+        // The focused window may be on any display, so accept a group that exists on at least one.
+        // (The planner ignores a snap to a group its display doesn't have.)
+        let maxGroups = Display.all().map { d -> Int in
+            let (columns, rows) = GroupGrid.dimensions(for: d.visibleFrame, settings: settings)
+            return columns * rows
+        }.max() ?? 1
+        guard group < maxGroups else { NSSound.beep(); return }
         engine.snap(nil, toGroup: group, settings: settings)
     }
 

@@ -113,16 +113,16 @@ final class Engine {
             return
         }
 
-        // The display to lay out: the drop display, otherwise where a full cascade would put this window.
+        // The display to lay out: where the window was dropped, otherwise where a full cascade would put it.
         let display: Display
         if dropped || settings.displayMode == .pointerScreen {
             display = pointer
         } else {
-            display = snapped.center.flatMap { Display.containing($0, in: displays) } ?? pointer
+            display = Self.display(of: snapped, in: displays, fallback: pointer)
         }
         var members = settings.displayMode == .pointerScreen
             ? all
-            : all.filter { w in (w.center.flatMap { Display.containing($0, in: displays) }?.id ?? pointer.id) == display.id }
+            : all.filter { Self.display(of: $0, in: displays, fallback: pointer).id == display.id }
         if !members.contains(where: { $0.windowID == targetID }) { members.append(snapped) }
 
         let before = Planner.plan(windows: members.map(\.planWindow), area: display.visibleFrame,
@@ -159,11 +159,17 @@ final class Engine {
         guard settings.displayMode == .eachDisplay, displays.count > 1 else { return [(pointer, windows)] }
         var buckets: [CGDirectDisplayID: [LiveWindow]] = [:]
         for w in windows {
-            // Minimized/hidden windows have no meaningful position; they join the pointer's display.
-            let onDisplay = (w.minimized || w.appHidden) ? nil : w.center.flatMap { Display.containing($0, in: displays) }
-            buckets[(onDisplay ?? pointer).id, default: []].append(w)
+            buckets[Self.display(of: w, in: displays, fallback: pointer).id, default: []].append(w)
         }
         return displays.compactMap { d in buckets[d.id].map { (d, $0) } }
+    }
+
+    /// The display a window lives on. Minimized and hidden windows keep their last frame, so they
+    /// stay with the display they came from instead of jumping to another one.
+    private static func display(of window: LiveWindow, in displays: [Display], fallback: Display) -> Display {
+        let fallbackIndex = displays.firstIndex(of: fallback) ?? 0
+        let i = DisplayAssigner.index(for: window.frame, displays: displays.map(\.frame), fallback: fallbackIndex)
+        return displays.indices.contains(i) ? displays[i] : fallback
     }
 
     private func restore(_ windows: [LiveWindow]) {
