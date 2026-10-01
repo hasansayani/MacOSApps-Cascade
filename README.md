@@ -7,7 +7,8 @@ On large displays, windows can be split into several side-by-side **cascade grou
 
 ## Download
 
-Grab the ready-to-use app: **[releases/Cascade-2.0.1.zip](releases/Cascade-2.0.1.zip)**
+Grab the latest **Cascade-x.y.z.zip** from the
+**[Releases page](https://github.com/hasansayani/MacOSApps-Cascade/releases/latest)**
 (universal: Apple silicon + Intel, macOS 13 Ventura or later, including the latest macOS).
 
 1. Unzip and drag **Cascade.app** into **/Applications**.
@@ -60,6 +61,14 @@ Spotlight opens **Settings**.
 - **Keyboard shortcuts**: click a shortcut field, then press a new shortcut. Esc cancels; Delete clears it.
 
 A live preview at the top of Settings shows the resulting layout.
+
+## Releasing
+
+```bash
+./release.sh 2.1.0      # bump version, build, tag, push, and publish a GitHub Release
+```
+
+Requires the GitHub CLI (`gh auth login`). Test the build locally with `./install.sh` first.
 
 ## Development
 
