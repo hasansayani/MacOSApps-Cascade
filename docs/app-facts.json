@@ -1,46 +1,46 @@
 {
-  "version": "2.0.1",
+  "version": "2.1.0",
   "min_macos": "13",
   "date": "2026-10-01",
   "machine": "Apple M5, macOS 27.0.1",
   "code": {
     "CascadeCore": {
       "files": 3,
-      "code": 324,
-      "comments": 66,
-      "blank": 48
+      "code": 344,
+      "comments": 69,
+      "blank": 49
     },
     "Cascade": {
       "files": 7,
-      "code": 1272,
-      "comments": 77,
-      "blank": 194
+      "code": 1307,
+      "comments": 83,
+      "blank": 198
     },
     "CascadeSelfTest": {
       "files": 1,
-      "code": 161,
-      "comments": 4,
-      "blank": 18
+      "code": 182,
+      "comments": 5,
+      "blank": 20
     }
   },
   "tests": {
-    "suites": 11,
-    "checks_passed": 77,
-    "checks_total": 77
+    "suites": 13,
+    "checks_passed": 86,
+    "checks_total": 86
   },
   "coverage": {
-    "core_lines_pct": 98.2,
-    "core_functions_pct": 94.5,
-    "core_regions_pct": 92.6
+    "core_lines_pct": 98.0,
+    "core_functions_pct": 93.5,
+    "core_regions_pct": 92.7
   },
   "size": {
-    "app_bytes": 1271173,
-    "binary_bytes": 890032,
+    "app_bytes": 1288869,
+    "binary_bytes": 907728,
     "slices": {
-      "x86_64": 438320,
-      "arm64": 431280
+      "x86_64": 447888,
+      "arm64": 432592
     },
-    "zip_bytes": 696740
+    "zip_bytes": 707219
   },
   "security": {
     "accessibility": true,
@@ -66,15 +66,15 @@
     ]
   },
   "runtime": {
-    "idle_cpu_pct": 0.05,
-    "idle_memory_mb": 29.7,
-    "threads": 3,
+    "idle_cpu_pct": 4.2,
+    "idle_memory_mb": 110.7,
+    "threads": 6,
     "scan": {
       "runs": 25,
       "windows": 5,
       "apps": 2,
-      "median_ms": 1.5,
-      "p95_ms": 5.5
+      "median_ms": 1.1,
+      "p95_ms": 17.8
     }
   }
 }
