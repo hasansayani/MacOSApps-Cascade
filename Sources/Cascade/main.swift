@@ -250,6 +250,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
+// `Cascade --benchmark [runs]` times a full window scan + layout plan (nothing is moved) and prints JSON.
+// Used by scripts/repo_report.py for the App Facts label. Needs Accessibility access.
+if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
+    guard Permissions.isTrusted else {
+        FileHandle.standardError.write(Data("benchmark needs Accessibility access\n".utf8))
+        exit(2)
+    }
+    let runs = (i + 1 < CommandLine.arguments.count ? Int(CommandLine.arguments[i + 1]) : nil) ?? 25
+    let settings = CascadeSettings()
+    let area = Display.all().first?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1512, height: 920)
+    var samples: [Double] = []
+    var windowCount = 0
+    var appCount = 0
+    for _ in 0..<runs {
+        let start = DispatchTime.now().uptimeNanoseconds
+        let windows = WindowSource.collect(.visible)
+        _ = Planner.plan(windows: windows.map(\.planWindow), area: area, settings: settings)
+        samples.append(Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000)
+        windowCount = windows.count
+        appCount = Set(windows.map(\.pid)).count
+    }
+    samples.sort()
+    let median = samples[samples.count / 2]
+    let p95 = samples[min(samples.count - 1, Int(Double(samples.count) * 0.95))]
+    print(#"{"runs": \#(runs), "windows": \#(windowCount), "apps": \#(appCount), "median_ms": \#(String(format: "%.1f", median)), "p95_ms": \#(String(format: "%.1f", p95))}"#)
+    exit(0)
+}
+
 #if DEBUG
 // Debug-only: `Cascade --render-settings out.png` snapshots the settings UI without screen recording permission.
 if let i = CommandLine.arguments.firstIndex(of: "--render-settings"), i + 1 < CommandLine.arguments.count {

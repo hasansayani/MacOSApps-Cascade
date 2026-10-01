@@ -21,7 +21,10 @@ BUILD=$(( $(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "$PLIST") + 1 ))
 ZIP="build/Cascade-$VERSION.zip"
 (cd build && shasum -a 256 "Cascade-$VERSION.zip" > "Cascade-$VERSION.zip.sha256")
 
-git add "$PLIST"
+# Refresh the App Facts label and code graph for this version.
+scripts/repo_report.py --skip-build
+
+git add "$PLIST" docs README.md
 git commit -m "Release $VERSION"
 git tag -a "$TAG" -m "Cascade $VERSION"
 git push origin HEAD --follow-tags

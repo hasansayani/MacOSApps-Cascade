@@ -1,0 +1,80 @@
+{
+  "version": "2.0.1",
+  "min_macos": "13",
+  "date": "2026-10-01",
+  "machine": "Apple M5, macOS 27.0.1",
+  "code": {
+    "CascadeCore": {
+      "files": 3,
+      "code": 324,
+      "comments": 66,
+      "blank": 48
+    },
+    "Cascade": {
+      "files": 7,
+      "code": 1272,
+      "comments": 77,
+      "blank": 194
+    },
+    "CascadeSelfTest": {
+      "files": 1,
+      "code": 161,
+      "comments": 4,
+      "blank": 18
+    }
+  },
+  "tests": {
+    "suites": 11,
+    "checks_passed": 77,
+    "checks_total": 77
+  },
+  "coverage": {
+    "core_lines_pct": 98.2,
+    "core_functions_pct": 94.5,
+    "core_regions_pct": 92.6
+  },
+  "size": {
+    "app_bytes": 1271173,
+    "binary_bytes": 890032,
+    "slices": {
+      "x86_64": 438320,
+      "arm64": 431280
+    },
+    "zip_bytes": 696740
+  },
+  "security": {
+    "accessibility": true,
+    "network_calls": 0,
+    "screen_capture": false,
+    "keyboard_monitor": false,
+    "private_apis": [
+      "_AXUIElementGetWindow"
+    ],
+    "dependencies": 0,
+    "hardened_runtime": true,
+    "signature": "Ad-hoc",
+    "entitlements": 0,
+    "frameworks": [
+      "AppKit",
+      "ApplicationServices",
+      "Carbon",
+      "Cocoa",
+      "Combine",
+      "ServiceManagement",
+      "SwiftUI",
+      "os"
+    ]
+  },
+  "runtime": {
+    "idle_cpu_pct": 0.0,
+    "idle_memory_mb": 29.7,
+    "threads": 3,
+    "scan": {
+      "runs": 25,
+      "windows": 5,
+      "apps": 2,
+      "median_ms": 1.0,
+      "p95_ms": 4.3
+    }
+  }
+}
