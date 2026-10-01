@@ -5,7 +5,20 @@ gets the same size and is offset diagonally, so its title bar and left edge stay
 clickable. Windows are grouped by application, and the window that was in front stays on top.
 On large displays, windows can be split into several side-by-side **cascade groups**.
 
-## Install
+## Download
+
+Grab the ready-to-use app: **[releases/Cascade-2.0.1.zip](releases/Cascade-2.0.1.zip)**
+(universal: Apple silicon + Intel, macOS 13 Ventura or later, including the latest macOS).
+
+1. Unzip and drag **Cascade.app** into **/Applications**.
+2. Open it. Because the app is not notarized by Apple, macOS blocks the first launch: open
+   **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Cascade.
+   (Or run `xattr -dr com.apple.quarantine /Applications/Cascade.app` once.)
+3. When asked, turn on Cascade under **Privacy & Security → Accessibility**.
+
+The cascade icon appears in the menu bar. Press ⌃⌥C to cascade.
+
+## Build from source
 
 ```bash
 ./install.sh
