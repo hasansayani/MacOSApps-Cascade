@@ -24,6 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if terminateIfAlreadyRunning() { return }
+        log.info("launched from \(Bundle.main.bundlePath, privacy: .public); accessibility trusted: \(Permissions.isTrusted)")
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = StatusIcon.make()

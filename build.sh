@@ -33,8 +33,14 @@ done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -rf "$ICONSET" build/icon_1024.png
 
-echo "→ Signing (ad-hoc, hardened runtime)"
-codesign --force --options runtime --sign - "$APP"
+# An ad-hoc signature's default designated requirement is the binary's cdhash, which changes on every
+# build. macOS ties the Accessibility grant to that requirement, so each rebuild would silently lose the
+# permission (the app keeps asking even though System Settings shows it enabled). Pinning the requirement
+# to the bundle identifier keeps the grant valid across rebuilds and updates.
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" Resources/Info.plist)
+echo "→ Signing (ad-hoc, hardened runtime, stable requirement)"
+codesign --force --options runtime --sign - \
+  --requirements "=designated => identifier \"$BUNDLE_ID\"" "$APP"
 codesign --verify --strict "$APP"
 
 echo "→ Packaging"

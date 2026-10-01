@@ -119,20 +119,34 @@ extension AXUIElement {
 enum Permissions {
     static var isTrusted: Bool { AXIsProcessTrusted() }
 
-    /// Returns true if trusted; otherwise triggers the system prompt and explains what to do.
+    /// The system prompt is shown at most once per launch; repeating it never helps and is what
+    /// made a stale grant look like an endless permission loop.
+    private static var systemPromptShown = false
+
+    /// Returns true if trusted; otherwise prompts once, then explains what to do.
     @discardableResult
     static func ensureTrusted(explain: Bool = true) -> Bool {
         if isTrusted { return true }
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        if AXIsProcessTrustedWithOptions(options) { return true }
+        if !systemPromptShown {
+            systemPromptShown = true
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            if AXIsProcessTrustedWithOptions(options) { return true }
+            return false   // the system dialog is up; don't stack our own alert on top of it
+        }
         guard explain else { return false }
 
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Cascade needs Accessibility access"
-        alert.informativeText = "Cascade moves and resizes other apps' windows, which macOS only allows "
-            + "with Accessibility permission.\n\nOpen System Settings → Privacy & Security → Accessibility, "
-            + "enable Cascade, then try again."
+        alert.informativeText = """
+            Cascade moves and resizes other apps' windows, which macOS only allows with Accessibility permission.
+
+            Open System Settings → Privacy & Security → Accessibility and turn on Cascade.
+
+            If Cascade is already turned on but this message keeps appearing, the entry belongs to an \
+            older copy of the app: select Cascade, remove it with the – button, then add \
+            \(Bundle.main.bundlePath) again with +.
+            """
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Cancel")
         if alert.runModal() == .alertFirstButtonReturn { openSettings() }
