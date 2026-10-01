@@ -1,19 +1,25 @@
 #!/bin/bash
-# Builds Cascade.app into ./build
+# Runs the self-tests, then builds a universal, ad-hoc signed Cascade.app into ./build
 set -euo pipefail
 cd "$(dirname "$0")"
 
 APP=build/Cascade.app
+VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+
+echo "→ Self-tests"
+swift run -c release CascadeSelfTest | tail -1
+
+echo "→ Compiling Cascade $VERSION (arm64 + x86_64)"
+BINS=()
+for arch in arm64 x86_64; do
+  swift build -c release --product Cascade --triple "$arch-apple-macosx13.0" >/dev/null
+  BINS+=("$(swift build -c release --product Cascade --triple "$arch-apple-macosx13.0" --show-bin-path)/Cascade")
+done
+
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-
-echo "→ Compiling"
-for arch in arm64 x86_64; do
-  swiftc -O -swift-version 5 -target "$arch-apple-macos13.0" \
-    Sources/main.swift -o "build/Cascade-$arch"
-done
-lipo -create build/Cascade-arm64 build/Cascade-x86_64 -output "$APP/Contents/MacOS/Cascade"
-rm build/Cascade-arm64 build/Cascade-x86_64
+lipo -create "${BINS[@]}" -output "$APP/Contents/MacOS/Cascade"
+strip -x "$APP/Contents/MacOS/Cascade"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 echo "→ Rendering icon"
@@ -27,6 +33,10 @@ done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -rf "$ICONSET" build/icon_1024.png
 
-echo "→ Signing (ad-hoc)"
-codesign --force --deep --sign - "$APP"
-echo "✓ Built $APP"
+echo "→ Signing (ad-hoc, hardened runtime)"
+codesign --force --options runtime --sign - "$APP"
+codesign --verify --strict "$APP"
+
+echo "→ Packaging"
+(cd build && rm -f "Cascade-$VERSION.zip" && ditto -c -k --keepParent Cascade.app "Cascade-$VERSION.zip")
+echo "✓ Built $APP and build/Cascade-$VERSION.zip"
