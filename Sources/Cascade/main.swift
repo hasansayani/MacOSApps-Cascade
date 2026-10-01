@@ -144,6 +144,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    private static let repoURL = URL(string: "https://github.com/hasansayani/MacOSApps-Cascade")!
+
+    /// Standard About window (icon, name, version, copyright from Info.plist) plus a description and links.
+    @objc private func showAbout() {
+        let body = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let center = NSMutableParagraphStyle()
+        center.alignment = .center
+        center.paragraphSpacing = 6
+        let base: [NSAttributedString.Key: Any] = [.font: body, .paragraphStyle: center,
+                                                   .foregroundColor: NSColor.labelColor]
+        let credits = NSMutableAttributedString(
+            string: "Arranges windows in a classic cascade, grouped by application.\n", attributes: base)
+        let links: [(String, String)] = [("GitHub", ""), ("Releases", "/releases"), ("Report an issue", "/issues")]
+        for (index, (title, path)) in links.enumerated() {
+            if index > 0 { credits.append(NSAttributedString(string: "  ·  ", attributes: base)) }
+            var attrs = base
+            attrs[.link] = Self.repoURL.appendingPathComponent(path)
+            credits.append(NSAttributedString(string: title, attributes: attrs))
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
+    }
+
     @objc private func openSettings() {
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 680),
@@ -224,6 +247,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.keyEquivalent = ","
         menu.addItem(settingsItem)
         menu.addItem(.separator())
+        menu.addItem(item("About Cascade", #selector(showAbout)))
         menu.addItem(NSMenuItem(title: "Quit Cascade", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
