@@ -1,185 +1,63 @@
 # Cascade
 
-A macOS menu bar utility that arranges windows in a classic Windows-style cascade: every window
+A macOS menu bar utility that arranges windows in a classic Windows-style cascade. Every window
 gets the same size and is offset diagonally, so its title bar and left edge stay visible and
 clickable. Windows are grouped by application, and the window that was in front stays on top.
 On large displays, windows can be split into several side-by-side **cascade groups**.
 
 ## App Facts
 
-Like a nutrition label, but for software: what's inside, what it can access, and what it costs to run.
-Every number is measured from the code and the built app by
-[`scripts/repo_report.py`](scripts/repo_report.py) (raw data: [`docs/app-facts.json`](docs/app-facts.json)).
+Like a nutrition label, but for software: what's inside, what it can access, and what it costs to
+run. Every number is measured from the code and the built app.
 
-<p align="center"><img src="docs/app-facts.svg" alt="App Facts label: code size, tests, permissions, download size, CPU and memory use" width="388"></p>
+<p align="center"><img src="docs/app-facts.svg" alt="App Facts label: download size, code, tests, permissions, CPU and memory use" width="388"></p>
 
-## Download
+## Installation
 
-Grab the latest **Cascade-x.y.z.zip** from the
-**[Releases page](https://github.com/hasansayani/MacOSApps-Cascade/releases/latest)**
-(universal: Apple silicon + Intel, macOS 13 Ventura or later, including the latest macOS).
+1. Download the latest **Cascade-x.y.z.zip** from the
+   **[Releases page](https://github.com/hasansayani/MacOSApps-Cascade/releases/latest)**.
+   It runs on Apple silicon and Intel Macs with macOS 13 Ventura or later.
+2. Unzip it and drag **Cascade.app** into **/Applications**.
+3. Open it. The app is not notarized by Apple, so macOS blocks the first launch: go to
+   **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+4. When asked, turn on Cascade under **Privacy & Security → Accessibility**. macOS requires this
+   for any app that moves other apps' windows.
 
-1. Unzip and drag **Cascade.app** into **/Applications**.
-2. Open it. Because the app is not notarized by Apple, macOS blocks the first launch: open
-   **System Settings → Privacy & Security**, scroll down and click **Open Anyway** next to Cascade.
-   (Or run `xattr -dr com.apple.quarantine /Applications/Cascade.app` once.)
-3. When asked, turn on Cascade under **Privacy & Security → Accessibility**.
-
-The cascade icon appears in the menu bar. Press ⌃⌥C to cascade.
-
-## Build from source
-
-```bash
-./install.sh
-```
-
-Runs the self-tests, builds a universal (Apple silicon + Intel) `Cascade.app`, copies it to
-`/Applications`, and launches it. On first run, grant **Accessibility** access (System Settings →
-Privacy & Security → Accessibility). macOS requires it to move other apps' windows.
-
-`./build.sh` alone produces `build/Cascade.app` and a distributable `build/Cascade-<version>.zip`.
-Builds are ad-hoc signed, so each rebuild needs Accessibility granted again (`install.sh` clears
-the stale entry for you). Requires macOS 13+ and the Xcode command line tools.
+The cascade icon appears in the menu bar.
 
 ## Use
 
-| Action | Default shortcut |
+| Action | Shortcut |
 | --- | --- |
 | Cascade visible windows | ⌃⌥C |
-| Cascade all windows (restores minimized windows and hidden apps) | ⌃⌥⇧C |
-| Snap the focused window to group 1–9 | ⌃⌥1 … ⌃⌥9 |
-| Snap by dragging | Drag a window while holding ⇧ and drop it on a group |
+| Cascade all windows, including minimized windows and hidden apps | ⌃⌥⇧C |
+| Snap the focused window into group 1–9 | ⌃⌥1 … ⌃⌥9 |
+| Snap by dragging | Hold ⇧ while dragging a window, then drop it on a group |
 
-Everything is also available from the menu bar icon. Opening Cascade again from Finder or
-Spotlight opens **Settings**.
+Everything is also in the menu bar menu. Opening Cascade again from Finder or Spotlight opens
+**Settings**. Cascade only arranges normal windows on the current Space; full-screen windows,
+panels and dialogs are left alone.
 
 ## Settings
 
-- **Window size**: *Fill group* (windows fill their group and shrink as the stack grows) or
-  *Custom* width/height as a percentage of the group.
-- **Visible part of windows underneath**: how many points of each covered window stay visible
-  at the top (title bar) and left edge.
-- **Cascade groups**: columns (or automatic, about one group per 1280 pt of width), rows, and the gap between groups.
-  - *Group by application*: each app's windows stay together and apps are balanced across groups.
-    Unused groups can give their space to the groups in use.
-  - *Manual*: pin apps to specific groups. Unpinned apps are balanced across groups.
-- **Snapping**: a snapped window stays in its group until it closes or you choose
-  *Reset Snapped Windows*. Snapping re-lays only the groups that changed.
-- **Displays**: gather everything onto the display under the pointer, or cascade each display separately.
-- **Keyboard shortcuts**: click a shortcut field, then press a new shortcut. Esc cancels; Delete clears it.
-
 A live preview at the top of Settings shows the resulting layout.
 
-## Releasing
+- **Window size**: *Fill group* (windows fill their group and shrink as the stack grows), or a
+  *Custom* width and height as a percentage of the group.
+- **Visible part of windows underneath**: how many points of each covered window stay visible at
+  the top (title bar) and on the left.
+- **Cascade groups**: number of columns (or automatic, about one per 1280 pt of screen width),
+  rows, and the gap between groups.
+  - *Group by application*: each app's windows stay together and apps are spread evenly across
+    groups. Groups with nothing in them can give their space to the others.
+  - *Manual*: pin apps to specific groups. Apps you don't pin are spread across the rest.
+- **Snapping**: turn drag-to-snap on or off, choose its modifier key, and enable ⌃⌥1–9. A snapped
+  window stays in its group until it closes or you choose *Reset Snapped Windows*.
+- **Displays**: put everything on the display under the pointer, or cascade each display separately.
+- **Keyboard shortcuts**: click a shortcut, then press a new one. Esc cancels; Delete clears it.
+- **Launch at login**.
 
-```bash
-./release.sh 2.1.0      # bump version, build, tag, push, and publish a GitHub Release
-```
+---
 
-Requires the GitHub CLI (`gh auth login`). Test the build locally with `./install.sh` first.
-
-## Development
-
-```
-Sources/CascadeCore      pure layout + grouping logic (no AppKit)
-Sources/Cascade          the menu bar app (Accessibility, hotkeys, drag-to-snap, SwiftUI settings)
-Sources/CascadeSelfTest  assertion checks for CascadeCore
-```
-
-### Code graph
-
-Each box is a source file, showing its main types and size. An arrow means "uses a type declared in";
-dotted arrows lead to the macOS frameworks that need special capabilities.
-Generated by `scripts/repo_report.py`.
-
-<!-- code-graph:start -->
-```mermaid
-flowchart LR
-  subgraph CascadeCore["CascadeCore · Core logic"]
-    CascadeCore_Layout["<b>Layout.swift</b><br/><small>GroupGrid, CascadeLayout<br/>77 lines</small>"]
-    CascadeCore_Planner["<b>Planner.swift</b><br/><small>Planner, PlanWindow, DropTarget<br/>119 lines</small>"]
-    CascadeCore_Settings["<b>Settings.swift</b><br/><small>CascadeSettings, Shortcut, SnapModifier<br/>128 lines</small>"]
-  end
-  subgraph Cascade["Cascade · App"]
-    Cascade_Accessibility["<b>Accessibility.swift</b><br/><small>Display, Permissions<br/>150 lines</small>"]
-    Cascade_DragSnapper["<b>DragSnapper.swift</b><br/><small>DragSnapper, SnapOverlay, OverlayView<br/>150 lines</small>"]
-    Cascade_Engine["<b>Engine.swift</b><br/><small>Engine<br/>178 lines</small>"]
-    Cascade_SettingsView["<b>SettingsView.swift</b><br/><small>SettingsView, PercentSlider, PointSlider<br/>319 lines</small>"]
-    Cascade_Support["<b>Support.swift</b><br/><small>HotKeys, SettingsStore, StatusIcon<br/>132 lines</small>"]
-    Cascade_WindowSource["<b>WindowSource.swift</b><br/><small>LiveWindow, WindowSource, Scope<br/>94 lines</small>"]
-    Cascade_main["<b>main.swift</b><br/><small>AppDelegate<br/>249 lines</small>"]
-  end
-  subgraph CascadeSelfTest["CascadeSelfTest · Self-tests"]
-    CascadeSelfTest_main["<b>main.swift</b><br/><small>entry point<br/>161 lines</small>"]
-  end
-  subgraph macOS["macOS frameworks"]
-    fw_ApplicationServices(["Accessibility API"])
-    fw_Carbon(["Carbon hot keys"])
-    fw_SwiftUI(["SwiftUI"])
-    fw_ServiceManagement(["Login items"])
-  end
-  CascadeCore_Layout --> CascadeCore_Settings
-  CascadeCore_Planner --> CascadeCore_Layout
-  CascadeCore_Planner --> CascadeCore_Settings
-  Cascade_Accessibility -.-> fw_ApplicationServices
-  Cascade_DragSnapper --> Cascade_Accessibility
-  Cascade_DragSnapper --> Cascade_Engine
-  Cascade_DragSnapper -.-> fw_ApplicationServices
-  Cascade_Engine --> Cascade_Accessibility
-  Cascade_Engine --> Cascade_WindowSource
-  Cascade_Engine -.-> fw_ApplicationServices
-  Cascade_SettingsView --> Cascade_Support
-  Cascade_SettingsView -.-> fw_ServiceManagement
-  Cascade_SettingsView -.-> fw_SwiftUI
-  Cascade_Support -.-> fw_Carbon
-  Cascade_WindowSource --> Cascade_Accessibility
-  Cascade_WindowSource -.-> fw_ApplicationServices
-  Cascade_main --> Cascade_Accessibility
-  Cascade_main --> Cascade_DragSnapper
-  Cascade_main --> Cascade_Engine
-  Cascade_main --> Cascade_SettingsView
-  Cascade_main --> Cascade_Support
-  Cascade_main --> Cascade_WindowSource
-  Cascade_main -.-> fw_ServiceManagement
-  Cascade_main -.-> fw_SwiftUI
-  Cascade ==>|"uses"| CascadeCore
-  CascadeSelfTest ==>|"uses"| CascadeCore
-```
-<!-- code-graph:end -->
-
-### How a cascade runs
-
-```mermaid
-sequenceDiagram
-    actor You
-    participant App as AppDelegate<br/>(main thread)
-    participant Engine as Engine<br/>(background queue)
-    participant WS as WindowSource
-    participant Planner as Planner<br/>(CascadeCore)
-    participant AX as Accessibility API
-    You->>App: ⌃⌥C, menu, or drag-to-snap
-    App->>Engine: cascade(scope, settings)
-    Engine->>WS: collect windows
-    WS->>AX: query every app in parallel (0.75 s timeout each)
-    AX-->>WS: windows, frames, minimized state
-    WS-->>Engine: LiveWindow list + z-order
-    Engine->>Planner: plan(windows, display area, settings, snaps)
-    Planner-->>Engine: groups, frames, raise order
-    Engine->>AX: set position/size, raise back-to-front
-    Engine-->>App: drop targets for drag-to-snap
-```
-
-### Reports
-
-```bash
-scripts/repo_report.py        # rebuild, measure, regenerate the App Facts label and the code graph
-```
-
-```bash
-swift run CascadeSelfTest     # core checks (no Xcode needed)
-swift build                   # debug build
-```
-
-Only standard windows on the current Space are arranged. Full-screen windows, panels and dialogs
-are skipped. Stacks too deep for one diagonal continue in a second pass to the right, so every
-window keeps an exposed corner.
+Building from source, releasing, and how the code fits together:
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

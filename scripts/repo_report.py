@@ -3,7 +3,8 @@
 
   docs/app-facts.svg   a "nutrition facts"-style label (code, tests, permissions, size, CPU, memory)
   docs/app-facts.json  the raw numbers behind the label
-  README.md            the code graph and label sections (between <!-- …:start/end --> markers)
+  docs/code-graph.svg  file-level dependency graph (Graphviz)
+  docs/cascade-flow.svg  how a cascade runs, from docs/cascade-flow.dot (Graphviz)
 
 Usage: scripts/repo_report.py [--skip-build]
 Run from anywhere; expects build/Cascade.app (built by build.sh unless --skip-build).
@@ -151,7 +152,8 @@ def machine():
 # ---------------------------------------------------------------------------------------------
 # Code graph
 
-def code_graph():
+def code_graph_dot():
+    """Graphviz source for the file-level dependency graph."""
     files = {t: sorted((ROOT / "Sources" / t).glob("*.swift")) for t in TARGETS}
     texts = {f: f.read_text() for fs in files.values() for f in fs}
     decl = re.compile(r"^(?:(?:public|private|fileprivate|internal|final)\s+)*(?:class|struct|enum|protocol)\s+(\w+)", re.M)
@@ -172,48 +174,72 @@ def code_graph():
             owners[name] = next(iter(fs))
 
     def node(f):
-        return f"{f.parent.name}_{f.stem}".replace("-", "_")
+        return f"{f.parent.name}_{f.stem}"
+
+    def uses(t, f):
+        return sum(len(re.findall(rf"\b{t}\b", o)) for g, o in texts.items() if g != f)
 
     special = {"ApplicationServices": "Accessibility API", "Carbon": "Carbon hot keys",
                "SwiftUI": "SwiftUI", "ServiceManagement": "Login items"}
-    lines = ["```mermaid", "flowchart LR"]
+    styles = {"CascadeCore": ("#eef4ff", "#3b6fd8"), "Cascade": ("#f4f4f4", "#555555"),
+              "CascadeSelfTest": ("#eefaf0", "#2f8f46")}
+    out = [
+        "digraph Cascade {",
+        '  graph [rankdir=TB, compound=true, nodesep=0.3, ranksep=0.55, pad=0.3, bgcolor="white",'
+        ' fontname="Helvetica", fontsize=13];',
+        '  node [shape=box, style="rounded,filled", fillcolor=white, color="#444444", penwidth=1.2,'
+        ' fontname="Helvetica", fontsize=12, margin="0.18,0.08"];',
+        '  edge [color="#555555", arrowsize=0.7, penwidth=1.1];',
+    ]
+    first = {}
     for target, fs in files.items():
-        lines.append(f'  subgraph {target}["{target} · {TARGETS[target]}"]')
+        fill, border = styles[target]
+        out.append(f'  subgraph cluster_{target} {{')
+        out.append(f'    label=<<b>{target}</b>  <font color="#666666">{TARGETS[target]}</font>>;')
+        out.append(f'    style="rounded,filled"; fillcolor="{fill}"; color="{border}"; penwidth=1.5; margin=14;')
         for f in fs:
             loc = sum(1 for l in texts[f].splitlines() if l.strip() and not l.strip().startswith("//"))
-            # Show the types other files lean on most.
-            def uses(t):
-                return sum(len(re.findall(rf"\b{t}\b", o)) for g, o in texts.items() if g != f)
-            types = sorted((t for t in declared[f] if not t.startswith("_")), key=lambda t: -uses(t))[:3]
-            subtitle = ", ".join(types) if types else "entry point"
-            lines.append(f'    {node(f)}["<b>{f.name}</b><br/><small>{escape(subtitle)}<br/>{loc} lines</small>"]')
-        lines.append("  end")
-    lines.append('  subgraph macOS["macOS frameworks"]')
-    for key, label in special.items():
-        lines.append(f'    fw_{key}(["{label}"])')
-    lines.append("  end")
-    edges = set()
+            types = sorted((t for t in declared[f] if not t.startswith("_")), key=lambda t: -uses(t, f))[:3]
+            subtitle = escape(", ".join(types) if types else "entry point")
+            frameworks = [label for key, label in special.items() if re.search(rf"^import {key}", texts[f], re.M)]
+            tag = (f'<br/><font point-size="9.5" color="#b35c00">▸ {escape(" · ".join(frameworks))}</font>'
+                   if frameworks else "")
+            out.append(f'    {node(f)} [label=<<b>{f.name}</b><br/><font point-size="10" color="#555555">'
+                       f'{subtitle}<br/>{loc} lines</font>{tag}>];')
+            first.setdefault(target, node(f))
+        out.append("  }")
+    out.append('  labelloc=b; label=<<font point-size="10" color="#555555">→ uses a type from    '
+               '⇒ package depends on package    '
+               '<font color="#b35c00">▸ macOS framework needing special access</font></font>>;')
+
+    edges, package_edges, fw_edges = set(), set(), set()
+    target_of = {node(f): f.parent.name for f in texts}
     for f, text in texts.items():
         stripped = re.sub(r"//.*", "", text)
         for name, owner in owners.items():
-            if owner != f and re.search(rf"\b{name}\b", stripped):
-                edges.add((node(f), node(owner)))
+            if owner == f or not re.search(rf"\b{name}\b", stripped):
+                continue
+            a, b = node(f), node(owner)
+            if target_of[a] == target_of[b]:
+                edges.add((a, b))
+            else:
+                package_edges.add((target_of[a], target_of[b]))
         for key in special:
             if re.search(rf"^import {key}", text, re.M):
-                edges.add((node(f), f"fw_{key}", "dotted"))
-    # Keep file-level arrows inside a package; arrows between packages collapse to one per pair.
-    target_of = {node(f): f.parent.name for f in texts}
-    package_edges = set()
-    for e in sorted(edges):
-        a, b = e[0], e[1]
-        if len(e) == 2 and target_of[a] != target_of[b]:
-            package_edges.add((target_of[a], target_of[b]))
-            continue
-        lines.append(f"  {a} -.-> {b}" if len(e) == 3 else f"  {a} --> {b}")
+                fw_edges.add((node(f), f"fw_{key}"))
+    for a, b in sorted(edges):
+        out.append(f"  {a} -> {b};")
     for a, b in sorted(package_edges):
-        lines.append(f'  {a} ==>|"uses"| {b}')
-    lines.append("```")
-    return "\n".join(lines)
+        # One thick arrow per package pair, drawn cluster-to-cluster.
+        out.append(f'  {first[a]} -> {first[b]} [ltail=cluster_{a}, lhead=cluster_{b}, penwidth=2.4,'
+                   f' color="#3b6fd8", label=" uses ", fontname="Helvetica", fontsize=10, fontcolor="#3b6fd8"];')
+    out.append("}")
+    return "\n".join(out) + "\n"
+
+
+def render_dot(source, svg_path):
+    svg = subprocess.run(["dot", "-Tsvg"], input=source, capture_output=True, text=True, check=True).stdout
+    svg_path.write_text(svg)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -386,14 +412,6 @@ def label_svg(r):
 
 # ---------------------------------------------------------------------------------------------
 
-def replace_section(readme, name, body):
-    start, end = f"<!-- {name}:start -->", f"<!-- {name}:end -->"
-    block = f"{start}\n{body}\n{end}"
-    if start in readme:
-        return re.sub(re.escape(start) + r".*?" + re.escape(end), lambda _: block, readme, flags=re.S)
-    raise SystemExit(f"README.md is missing the {start} marker")
-
-
 def main():
     if "--skip-build" not in sys.argv:
         print("→ Building")
@@ -426,11 +444,16 @@ def main():
     previous_path.write_text(json.dumps(report, indent=2) + "\n")
     (DOCS / "app-facts.svg").write_text(label_svg(report))
 
-    readme_path = ROOT / "README.md"
-    readme = readme_path.read_text()
-    readme = replace_section(readme, "code-graph", code_graph())
-    readme_path.write_text(readme)
-    print(f"✓ docs/app-facts.svg, docs/app-facts.json, README.md updated for {version}")
+    # Diagrams: rendered to SVG with Graphviz (GitHub shrinks wide Mermaid diagrams until unreadable).
+    if subprocess.run(["which", "dot"], capture_output=True).returncode == 0:
+        graph = code_graph_dot()
+        (DOCS / "code-graph.dot").write_text(graph)
+        render_dot(graph, DOCS / "code-graph.svg")
+        render_dot((DOCS / "cascade-flow.dot").read_text(), DOCS / "cascade-flow.svg")
+        diagrams = ", docs/code-graph.svg, docs/cascade-flow.svg"
+    else:
+        diagrams = " (diagrams skipped: brew install graphviz)"
+    print(f"✓ docs/app-facts.svg, docs/app-facts.json{diagrams} updated for {version}")
 
 
 if __name__ == "__main__":

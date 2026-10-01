@@ -66,15 +66,15 @@
     ]
   },
   "runtime": {
-    "idle_cpu_pct": 0.0,
+    "idle_cpu_pct": 0.05,
     "idle_memory_mb": 29.7,
     "threads": 3,
     "scan": {
       "runs": 25,
       "windows": 5,
       "apps": 2,
-      "median_ms": 1.0,
-      "p95_ms": 4.3
+      "median_ms": 1.5,
+      "p95_ms": 5.5
     }
   }
 }

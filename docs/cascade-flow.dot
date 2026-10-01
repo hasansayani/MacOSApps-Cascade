@@ -1,0 +1,35 @@
+// How a cascade runs. Rendered to cascade-flow.svg by scripts/repo_report.py (needs Graphviz).
+digraph CascadeFlow {
+  graph [rankdir=LR, compound=true, nodesep=0.3, ranksep=0.45, pad=0.3, bgcolor="white", fontname="Helvetica"];
+  node [shape=box, style="rounded,filled", fillcolor=white, color="#444444", penwidth=1.2,
+        fontname="Helvetica", fontsize=12, margin="0.18,0.1"];
+  edge [color="#555555", arrowsize=0.7, penwidth=1.1, fontname="Helvetica", fontsize=10, fontcolor="#555555"];
+
+  trigger [label=<<b>You</b><br/><font point-size="10" color="#555555">⌃⌥C · menu<br/>⌃⌥1–9 · ⇧-drag</font>>,
+           shape=box, style="rounded,filled", fillcolor="#fff7e6", color="#d08a00"];
+
+  subgraph cluster_main {
+    label=<<b>Main thread</b>>; style="rounded,filled"; fillcolor="#f4f4f4"; color="#555555"; margin=12;
+    app [label=<<b>AppDelegate</b><br/><font point-size="10" color="#555555">hot keys, menu,<br/>DragSnapper</font>>];
+  }
+
+  subgraph cluster_queue {
+    label=<<b>Background queue</b>  <font color="#666666">one operation at a time</font>>;
+    style="rounded,filled"; fillcolor="#f4f4f4"; color="#555555"; margin=12;
+    collect [label=<<b>1 · Collect</b><br/><font point-size="10" color="#555555">WindowSource<br/>all apps in parallel</font>>];
+    plan [label=<<b>2 · Plan</b><br/><font point-size="10" color="#555555">Planner (CascadeCore)<br/>groups · frames · order</font>>,
+          fillcolor="#eef4ff", color="#3b6fd8"];
+    apply [label=<<b>3 · Apply</b><br/><font point-size="10" color="#555555">Engine<br/>move · resize</font>>];
+    raise [label=<<b>4 · Raise</b><br/><font point-size="10" color="#555555">back to front,<br/>refocus front window</font>>];
+  }
+
+  ax [label=<<b>Accessibility API</b><br/><font point-size="10" color="#555555">0.75 s timeout per app</font>>,
+      style="rounded,dashed", color="#888888"];
+
+  trigger -> app;
+  app -> collect [label=" cascade / snap "];
+  collect -> plan [label=" windows +\n z-order "];
+  plan -> apply;
+  apply -> raise;
+  raise -> ax [ltail=cluster_queue, style=dashed, color="#888888", dir=both, label=" read & move windows "];
+}
