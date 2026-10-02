@@ -143,29 +143,3 @@ extension NSMenuItem {
         keyEquivalentModifierMask = shortcut.map { HotKeys.appKitModifiers($0.modifiers) } ?? []
     }
 }
-
-// MARK: - Status bar icon
-
-enum StatusIcon {
-    /// Three cascaded windows with title bars, drawn as a template image so it adapts to the menu bar.
-    static func make() -> NSImage {
-        let image = NSImage(size: NSSize(width: 18, height: 16), flipped: true) { _ in
-            for i in 0..<3 {
-                let rect = NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9)
-                let path = NSBezierPath(roundedRect: rect, xRadius: 1.5, yRadius: 1.5)
-                // Erase whatever is underneath so back windows only show their exposed edges.
-                NSGraphicsContext.current?.compositingOperation = .clear
-                path.fill()
-                NSGraphicsContext.current?.compositingOperation = .sourceOver
-                NSColor.black.setStroke()
-                NSColor.black.setFill()
-                path.lineWidth = 1.2
-                path.stroke()
-                NSBezierPath(rect: NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: 2.2)).fill()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }
-}

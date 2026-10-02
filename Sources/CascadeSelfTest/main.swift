@@ -177,6 +177,14 @@ test("settings round-trip and tolerate missing keys") {
     let clean = wild.sanitized()
     check(clean.revealTop == 200 && clean.columns == 0 && clean.widthPercent == 20, "sanitized")
     check(Shortcut.defaultCascadeAll.displayString == "⌃⌥⇧C", "display string")
+    var icons = CascadeSettings()
+    icons.menuBarIcon = .symbolLayers
+    icons.appIcon = .sunset
+    icons.customIconIsTemplate = false
+    let iconsBack = try! JSONDecoder().decode(CascadeSettings.self, from: try! JSONEncoder().encode(icons))
+    check(iconsBack == icons, "icon choices round trip")
+    let unknown = try! JSONDecoder().decode(CascadeSettings.self, from: Data(#"{"menuBarIcon": "rainbow"}"#.utf8))
+    check(unknown.menuBarIcon == .cascade, "unknown icon falls back to default")
 }
 
 test("windows are assigned to the display they are on") {

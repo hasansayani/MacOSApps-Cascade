@@ -58,6 +58,9 @@ A live preview at the top of Settings shows the resulting layout.
   including minimized windows and windows of hidden apps. You can instead gather every window onto
   the display under the pointer.
 - **Keyboard shortcuts**: click a shortcut, then press a new one. Esc cancels; Delete clears it.
+- **Appearance**: choose the menu bar icon (five designs, three macOS symbols, or your own image)
+  and an app icon color (Ocean, Graphite, Sunset, Forest, Grape). A custom image can follow the
+  menu bar's light/dark color or keep its own colors.
 - **Launch at login**.
 
 ---

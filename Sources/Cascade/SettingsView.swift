@@ -112,6 +112,16 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                MenuBarIconPicker(selection: s.menuBarIcon, customTemplate: s.customIconIsTemplate)
+                AppIconPicker(selection: s.appIcon)
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text("The app icon theme shows in About, Settings and alerts. Finder keeps the original icon.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("General") {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { enabled in setLaunchAtLogin(enabled) }
@@ -168,6 +178,110 @@ private struct PointSlider: View {
                 Text("\(Int(value)) pt").monospacedDigit().frame(width: 52, alignment: .trailing)
             }
         }
+    }
+}
+
+/// Grid of menu bar icon designs, macOS symbols, and a custom image.
+private struct MenuBarIconPicker: View {
+    @Binding var selection: MenuBarIconStyle
+    @Binding var customTemplate: Bool
+    /// Bumped when a new custom image is chosen so tiles redraw.
+    @State private var customRevision = 0
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Menu bar icon")
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(MenuBarIconStyle.allCases, id: \.self) { style in tile(style) }
+            }
+            .id(customRevision)
+            if selection == .custom {
+                HStack {
+                    Button("Choose Image…") { CustomIconStore.choose() }
+                    Spacer()
+                    Toggle("Match menu bar color", isOn: $customTemplate)
+                        .help("Turn off for full-color artwork. Turn on for single-color icons, which then adapt to light and dark menu bars.")
+                }
+            }
+        }
+        .padding(.vertical, 4)
+        .onReceive(NotificationCenter.default.publisher(for: CustomIconStore.didChange)) { _ in customRevision += 1 }
+    }
+
+    private func tile(_ style: MenuBarIconStyle) -> some View {
+        let selected = selection == style
+        return Button {
+            if style == .custom && CustomIconStore.load() == nil {
+                if CustomIconStore.choose() { selection = .custom }
+            } else {
+                selection = style
+            }
+        } label: {
+            VStack(spacing: 4) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.05))
+                    icon(style)
+                }
+                .frame(height: 36)
+                .overlay(RoundedRectangle(cornerRadius: 7)
+                    .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: selected ? 2 : 1))
+                Text(MenuBarIcons.title(style))
+                    .font(.caption2)
+                    .foregroundStyle(selected ? .primary : .secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(MenuBarIcons.title(style)) menu bar icon")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    @ViewBuilder private func icon(_ style: MenuBarIconStyle) -> some View {
+        if style == .custom && CustomIconStore.load() == nil {
+            Image(systemName: "plus").foregroundStyle(.secondary)
+        } else {
+            let image = MenuBarIcons.image(style, customTemplate: customTemplate)
+            Image(nsImage: image)
+                .renderingMode(image.isTemplate ? .template : .original)
+                .foregroundStyle(.primary)
+        }
+    }
+}
+
+/// Row of app icon color themes.
+private struct AppIconPicker: View {
+    @Binding var selection: AppIconStyle
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("App icon")
+            HStack(spacing: 0) {
+                ForEach(AppIconStyle.allCases, id: \.self) { style in
+                    let selected = selection == style
+                    Button { selection = style } label: {
+                        VStack(spacing: 4) {
+                            Image(nsImage: AppIconRenderer.image(style, size: 128))
+                                .resizable()
+                                .frame(width: 52, height: 52)
+                                .padding(3)
+                                .overlay(RoundedRectangle(cornerRadius: 14)
+                                    .strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 2))
+                            Text(AppIconRenderer.title(style))
+                                .font(.caption2)
+                                .foregroundStyle(selected ? .primary : .secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(AppIconRenderer.title(style)) app icon")
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

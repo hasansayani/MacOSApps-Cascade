@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         log.info("launched from \(Bundle.main.bundlePath, privacy: .public); accessibility trusted: \(Permissions.isTrusted)")
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = StatusIcon.make()
+        statusItem.button?.image = MenuBarIcons.image(for: settings)
         statusItem.button?.setAccessibilityLabel("Cascade")
         let menu = NSMenu()
         menu.delegate = self
@@ -45,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sink { [weak self] note in
                 if (note.object as? Bool) == true { HotKeys.unregisterAll() } else { self?.registerHotKeys() }
             }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: CustomIconStore.didChange)
+            .sink { [weak self] _ in self?.applyIcons() }
             .store(in: &cancellables)
 
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
@@ -67,6 +71,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         engine.invalidateLayouts()
         if settings.dragToSnap { dragSnapper.start() } else { dragSnapper.stop() }
         statusItem.button?.toolTip = "Cascade windows" + (settings.cascadeVisibleShortcut.map { " (\($0.displayString))" } ?? "")
+        applyIcons()
+    }
+
+    private func applyIcons() {
+        statusItem.button?.image = MenuBarIcons.image(for: settings)
+        // Shown in About, Settings and alerts. (Finder keeps the bundled icon: changing it would
+        // modify the signed app bundle.)
+        NSApp.applicationIconImage = AppIconRenderer.image(settings.appIcon)
     }
 
     private func registerHotKeys() {
@@ -280,6 +292,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
+// `Cascade --render-icon out.png [style]` writes a 1024 px app icon (used by build.sh for AppIcon.icns).
+if let i = CommandLine.arguments.firstIndex(of: "--render-icon"), i + 1 < CommandLine.arguments.count {
+    let style = (i + 2 < CommandLine.arguments.count ? AppIconStyle(rawValue: CommandLine.arguments[i + 2]) : nil) ?? .ocean
+    do {
+        try AppIconRenderer.writePNG(style, pixels: 1024, to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("render-icon failed: \(error)\n".utf8))
+        exit(1)
+    }
+}
+
 // `Cascade --benchmark [runs]` times a full window scan + layout plan (nothing is moved) and prints JSON.
 // Used by scripts/repo_report.py for the App Facts label. Needs Accessibility access.
 if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
@@ -309,6 +333,35 @@ if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
 }
 
 #if DEBUG
+// Debug-only: `Cascade --render-menubar-icons out.png` draws every menu bar icon at 8x on light and dark strips.
+if let i = CommandLine.arguments.firstIndex(of: "--render-menubar-icons"), i + 1 < CommandLine.arguments.count {
+    let styles = MenuBarIconStyle.allCases.filter { $0 != .custom }
+    let scale: CGFloat = 8, cell = NSSize(width: 26, height: 22)
+    let sheet = NSImage(size: NSSize(width: cell.width * CGFloat(styles.count) * scale, height: cell.height * 2 * scale), flipped: false) { _ in
+        for (row, dark) in [(0, true), (1, false)] {
+            (dark ? NSColor(white: 0.15, alpha: 1) : NSColor(white: 0.93, alpha: 1)).setFill()
+            NSRect(x: 0, y: CGFloat(row) * cell.height * scale, width: cell.width * CGFloat(styles.count) * scale, height: cell.height * scale).fill()
+            for (col, style) in styles.enumerated() {
+                let icon = MenuBarIcons.image(style)
+                let tinted = NSImage(size: icon.size, flipped: false) { r in
+                    icon.draw(in: r)
+                    (dark ? NSColor.white : NSColor.black).set()
+                    r.fill(using: .sourceAtop)
+                    return true
+                }
+                let size = NSSize(width: icon.size.width * scale, height: icon.size.height * scale)
+                tinted.draw(in: NSRect(x: (CGFloat(col) * cell.width + (cell.width - icon.size.width) / 2) * scale,
+                                       y: (CGFloat(row) * cell.height + (cell.height - icon.size.height) / 2) * scale,
+                                       width: size.width, height: size.height))
+            }
+        }
+        return true
+    }
+    let rep = NSBitmapImageRep(data: sheet.tiffRepresentation!)!
+    try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+    exit(0)
+}
+
 // Debug-only: `Cascade --render-settings out.png` snapshots the settings UI without screen recording permission.
 if let i = CommandLine.arguments.firstIndex(of: "--render-settings"), i + 1 < CommandLine.arguments.count {
     _ = NSApplication.shared

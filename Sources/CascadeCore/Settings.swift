@@ -29,6 +29,19 @@ public enum SnapModifier: String, Codable, CaseIterable, Sendable {
     case shift, control, option, command
 }
 
+/// The menu bar icon. Drawn designs and SF Symbols are template images that follow the menu bar's
+/// light/dark appearance; `custom` uses an image file the user picked.
+public enum MenuBarIconStyle: String, Codable, CaseIterable, Sendable {
+    case cascade, outline, cards, groups, solid
+    case symbolStack, symbolLayers, symbolWindows
+    case custom
+}
+
+/// Color theme of the app icon shown in About, Settings and alerts.
+public enum AppIconStyle: String, Codable, CaseIterable, Sendable {
+    case ocean, graphite, sunset, forest, grape
+}
+
 /// A global keyboard shortcut. `modifiers` uses Carbon modifier flags (cmdKey, optionKey, …).
 public struct Shortcut: Codable, Equatable, Sendable {
     public var keyCode: UInt32
@@ -95,6 +108,12 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     /// ⌃⌥1…⌃⌥9 snap the focused window to group 1…9.
     public var snapHotkeys: Bool = true
 
+    // Appearance
+    public var menuBarIcon: MenuBarIconStyle = .cascade
+    /// Tint a custom menu bar image to match the menu bar (best for single-color artwork).
+    public var customIconIsTemplate: Bool = true
+    public var appIcon: AppIconStyle = .ocean
+
     // Shortcuts
     public var cascadeVisibleShortcut: Shortcut? = .defaultCascadeVisible
     public var cascadeAllShortcut: Shortcut? = .defaultCascadeAll
@@ -139,6 +158,9 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         dragToSnap = (try? c.decode(Bool.self, forKey: .dragToSnap)) ?? d.dragToSnap
         snapModifier = (try? c.decode(SnapModifier.self, forKey: .snapModifier)) ?? d.snapModifier
         snapHotkeys = (try? c.decode(Bool.self, forKey: .snapHotkeys)) ?? d.snapHotkeys
+        menuBarIcon = (try? c.decode(MenuBarIconStyle.self, forKey: .menuBarIcon)) ?? d.menuBarIcon
+        customIconIsTemplate = (try? c.decode(Bool.self, forKey: .customIconIsTemplate)) ?? d.customIconIsTemplate
+        appIcon = (try? c.decode(AppIconStyle.self, forKey: .appIcon)) ?? d.appIcon
         cascadeVisibleShortcut = c.contains(.cascadeVisibleShortcut)
             ? try? c.decodeIfPresent(Shortcut.self, forKey: .cascadeVisibleShortcut) : d.cascadeVisibleShortcut
         cascadeAllShortcut = c.contains(.cascadeAllShortcut)
@@ -163,6 +185,9 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         try c.encode(dragToSnap, forKey: .dragToSnap)
         try c.encode(snapModifier, forKey: .snapModifier)
         try c.encode(snapHotkeys, forKey: .snapHotkeys)
+        try c.encode(menuBarIcon, forKey: .menuBarIcon)
+        try c.encode(customIconIsTemplate, forKey: .customIconIsTemplate)
+        try c.encode(appIcon, forKey: .appIcon)
         try c.encode(cascadeVisibleShortcut, forKey: .cascadeVisibleShortcut)
         try c.encode(cascadeAllShortcut, forKey: .cascadeAllShortcut)
     }
@@ -170,7 +195,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case sizeMode, widthPercent, heightPercent, revealTop, revealLeft, columns, rows, groupGap,
              groupingMode, collapseEmptyGroups, appGroups, displayMode, dragToSnap, snapModifier,
-             snapHotkeys, cascadeVisibleShortcut, cascadeAllShortcut
+             snapHotkeys, menuBarIcon, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
     }
 }
 

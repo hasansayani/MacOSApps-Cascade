@@ -10,10 +10,13 @@ echo "→ Self-tests"
 swift run -c release CascadeSelfTest | tail -1
 
 echo "→ Compiling Cascade $VERSION (arm64 + x86_64)"
+# One scratch directory per architecture: newer SwiftPM build systems write every triple to the same
+# output folder, so building both into one tree would leave only the last architecture.
 BINS=()
 for arch in arm64 x86_64; do
-  swift build -c release --product Cascade --triple "$arch-apple-macosx13.0" >/dev/null
-  BINS+=("$(swift build -c release --product Cascade --triple "$arch-apple-macosx13.0" --show-bin-path)/Cascade")
+  ARGS=(-c release --product Cascade --triple "$arch-apple-macosx13.0" --scratch-path ".build/arch-$arch")
+  swift build "${ARGS[@]}" >/dev/null
+  BINS+=("$(swift build "${ARGS[@]}" --show-bin-path)/Cascade")
 done
 
 rm -rf "$APP"
@@ -25,7 +28,7 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 echo "→ Rendering icon"
 ICONSET=build/AppIcon.iconset
 rm -rf "$ICONSET" && mkdir -p "$ICONSET"
-swift scripts/make_icon.swift build/icon_1024.png
+"$APP/Contents/MacOS/Cascade" --render-icon build/icon_1024.png ocean   # same renderer the app uses
 for s in 16 32 128 256 512; do
   sips -z $s $s build/icon_1024.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
   sips -z $((s*2)) $((s*2)) build/icon_1024.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
