@@ -304,6 +304,20 @@ if let i = CommandLine.arguments.firstIndex(of: "--render-icon"), i + 1 < Comman
     }
 }
 
+// `Cascade --diagnose` lists the windows a "cascade all" would arrange, as JSON lines. Moves nothing.
+if CommandLine.arguments.contains("--diagnose") {
+    guard Permissions.isTrusted else {
+        FileHandle.standardError.write(Data("diagnose needs Accessibility access\n".utf8))
+        exit(2)
+    }
+    for w in WindowSource.collect(.all) {
+        let f = w.frame.map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))x\(Int($0.height))" } ?? "?"
+        let app = w.bundleID ?? "pid \(w.pid)"
+        print(#"{"app": "\#(app)", "id": \#(w.windowID ?? 0), "minimized": \#(w.minimized), "hidden": \#(w.appHidden), "z": \#(w.zRank == .max ? -1 : w.zRank), "frame": "\#(f)"}"#)
+    }
+    exit(0)
+}
+
 // `Cascade --benchmark [runs]` times a full window scan + layout plan (nothing is moved) and prints JSON.
 // Used by scripts/repo_report.py for the App Facts label. Needs Accessibility access.
 if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
@@ -333,6 +347,39 @@ if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
 }
 
 #if DEBUG
+// Debug-only: `Cascade --minimize <bundleID>` minimizes that app's first window.
+if let i = CommandLine.arguments.firstIndex(of: "--minimize"), i + 1 < CommandLine.arguments.count,
+   let app = NSRunningApplication.runningApplications(withBundleIdentifier: CommandLine.arguments[i + 1]).first,
+   let windows: [AXUIElement] = AXUIElementCreateApplication(app.processIdentifier).attr(kAXWindowsAttribute),
+   let window = windows.first {
+    window.set(kAXMinimizedAttribute, kCFBooleanTrue)
+    usleep(1_000_000)
+    exit(0)
+}
+
+// Debug-only: `Cascade --test-restore <bundleID>` minimizes that app's first window, then replays the
+// cascade-all restore sequence (unminimize, wait 350 ms, set frame) and samples where the window ends up.
+if let i = CommandLine.arguments.firstIndex(of: "--test-restore"), i + 1 < CommandLine.arguments.count {
+    guard Permissions.isTrusted,
+          let app = NSRunningApplication.runningApplications(withBundleIdentifier: CommandLine.arguments[i + 1]).first,
+          let windows: [AXUIElement] = AXUIElementCreateApplication(app.processIdentifier).attr(kAXWindowsAttribute),
+          let window = windows.first else { print("no trust or no window"); exit(2) }
+    func state(_ label: String) {
+        let f = window.frame.map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))x\(Int($0.height))" } ?? "?"
+        print(label, "minimized:", (window.attr(kAXMinimizedAttribute) as Bool?) ?? false, "frame:", f)
+    }
+    window.set(kAXMinimizedAttribute, kCFBooleanTrue)
+    usleep(1_200_000)
+    state("after minimize       ")
+    let target = CGRect(x: 100, y: 150, width: 700, height: 500)
+    window.set(kAXMinimizedAttribute, kCFBooleanFalse)
+    usleep(350_000)
+    window.setFrame(target, resizable: true)
+    state("right after setFrame ")
+    for t in 1...8 { usleep(250_000); state("t+\(t * 250) ms".padding(toLength: 21, withPad: " ", startingAt: 0)) }
+    exit(0)
+}
+
 // Debug-only: `Cascade --render-menubar-icons out.png` draws every menu bar icon at 8x on light and dark strips.
 if let i = CommandLine.arguments.firstIndex(of: "--render-menubar-icons"), i + 1 < CommandLine.arguments.count {
     let styles = MenuBarIconStyle.allCases.filter { $0 != .custom }

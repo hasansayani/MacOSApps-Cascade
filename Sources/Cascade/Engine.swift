@@ -72,7 +72,7 @@ final class Engine {
         guard !windows.isEmpty else { DispatchQueue.main.async { NSSound.beep() }; return }
         pruneOverrides()
 
-        if scope == .all { restore(windows) }
+        let restored = scope == .all ? restore(windows) : []
 
         let partitions = partition(windows, settings: settings, displays: displays, pointer: pointer)
         var plans: [(display: Display, windows: [LiveWindow], plan: Plan)] = []
@@ -82,11 +82,22 @@ final class Engine {
             plans.append((display, members, plan))
         }
 
+        var targets: [(window: LiveWindow, frame: CGRect)] = []
+        for (_, members, plan) in plans {
+            for group in plan.groups {
+                for (i, frame) in zip(group.windows, group.frames) { targets.append((members[i], frame)) }
+            }
+        }
         withEnhancedUIDisabled(windows) {
-            for (_, members, plan) in plans {
-                for group in plan.groups {
-                    for (i, frame) in zip(group.windows, group.frames) {
-                        members[i].element.setFrame(frame, resizable: members[i].resizable)
+            for t in targets { t.window.element.setFrame(t.frame, resizable: t.window.resizable) }
+            // Just-restored windows can still snap back to their old frame; check and re-apply once.
+            if !restored.isEmpty {
+                let restoredIDs = Set(restored.compactMap { windows[$0].windowID })
+                usleep(150_000)
+                for t in targets where t.window.windowID.map(restoredIDs.contains) == true {
+                    if let now = t.window.element.frame,
+                       abs(now.minX - t.frame.minX) > 2 || abs(now.minY - t.frame.minY) > 2 {
+                        t.window.element.setFrame(t.frame, resizable: t.window.resizable)
                     }
                 }
             }
@@ -172,21 +183,49 @@ final class Engine {
         return displays.indices.contains(i) ? displays[i] : fallback
     }
 
-    private func restore(_ windows: [LiveWindow]) {
-        var restored = false
+    /// Un-hides apps and un-minimizes windows, then waits until they have really come back.
+    /// Returns the indices of windows that were restored. A fixed delay isn't enough: some apps
+    /// (Chrome, Firefox) animate for longer, and a frame set mid-animation is undone when it ends.
+    @discardableResult
+    private func restore(_ windows: [LiveWindow]) -> [Int] {
         var unhidden = Set<pid_t>()
-        for w in windows where w.appHidden && !unhidden.contains(w.pid) {
+        for w in windows where w.appHidden && unhidden.insert(w.pid).inserted {
             w.appElement.set(kAXHiddenAttribute, kCFBooleanFalse)
-            unhidden.insert(w.pid)
-            restored = true
         }
-        for w in windows where w.minimized {
-            w.element.set(kAXMinimizedAttribute, kCFBooleanFalse)
-            restored = true
-        }
-        if restored { usleep(350_000) }   // let un-minimize animations settle before resizing
-    }
+        let restoring = windows.indices.filter { windows[$0].minimized }
+        guard !restoring.isEmpty || !unhidden.isEmpty else { return [] }
 
+        func isMinimized(_ i: Int) -> Bool { (windows[i].element.attr(kAXMinimizedAttribute) as Bool?) ?? false }
+        func wait(upTo seconds: Double, until done: () -> Bool) {
+            let deadline = Date().addingTimeInterval(seconds)
+            while !done() && Date() < deadline { usleep(50_000) }
+        }
+
+        for i in restoring { windows[i].element.set(kAXMinimizedAttribute, kCFBooleanFalse) }
+        wait(upTo: 1.5) { restoring.allSatisfy { !isMinimized($0) } }
+
+        // Some apps only restore a window when they're frontmost, or respond to "raise" instead.
+        let stragglers = restoring.filter(isMinimized)
+        for i in stragglers {
+            windows[i].appElement.set(kAXFrontmostAttribute, kCFBooleanTrue)
+            windows[i].element.set(kAXMinimizedAttribute, kCFBooleanFalse)
+            windows[i].element.perform(kAXRaiseAction)
+        }
+        if !stragglers.isEmpty { wait(upTo: 1.5) { stragglers.allSatisfy { !isMinimized($0) } } }
+
+        // Wait for the restore animation to finish: frames stop changing.
+        var previous = restoring.map { windows[$0].element.frame }
+        wait(upTo: 1.0) {
+            usleep(60_000)
+            let current = restoring.map { windows[$0].element.frame }
+            defer { previous = current }
+            return current == previous
+        }
+
+        let failed = restoring.filter(isMinimized)
+        log.info("restored \(restoring.count - failed.count) of \(restoring.count) minimized windows, unhid \(unhidden.count) apps")
+        return restoring.filter { !failed.contains($0) }
+    }
     /// Electron/Chrome apps animate frame changes while "enhanced UI" is on; turn it off temporarily.
     private func withEnhancedUIDisabled(_ windows: [LiveWindow], _ body: () -> Void) {
         var seen = Set<pid_t>()
