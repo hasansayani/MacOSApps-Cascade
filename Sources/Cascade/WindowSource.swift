@@ -70,10 +70,9 @@ enum WindowSource {
         for element in elements {
             AXUIElementSetMessagingTimeout(element, 0.75)
             let v = element.attrs(attributes)
-            guard (v[0] as? String) == kAXWindowRole,
-                  (v[1] as? String) == kAXStandardWindowSubrole,
-                  (v[2] as? Bool) != true else { continue }
             let minimized = (v[3] as? Bool) ?? false
+            guard WindowFilter.isCascadable(role: v[0] as? String, subrole: v[1] as? String,
+                                            minimized: minimized, fullScreen: (v[2] as? Bool) == true) else { continue }
             if minimized && scope == .visible { continue }
 
             let origin = v[4].flatMap(AXUIElement.point)

@@ -211,5 +211,19 @@ test("each display gets its own plan sized to that display") {
     check(plan.groups.flatMap(\.frames).allSatisfy { external.contains($0) }, "frames stay on the external display")
 }
 
+test("minimized windows are cascadable even though macOS calls them dialogs") {
+    func ok(_ role: String?, _ subrole: String?, minimized: Bool = false, fullScreen: Bool = false) -> Bool {
+        WindowFilter.isCascadable(role: role, subrole: subrole, minimized: minimized, fullScreen: fullScreen)
+    }
+    check(ok("AXWindow", "AXStandardWindow"), "normal window")
+    check(ok("AXWindow", "AXStandardWindow", minimized: true), "minimized standard window")
+    check(ok("AXWindow", "AXDialog", minimized: true), "minimized window reported as dialog")
+    check(!ok("AXWindow", "AXDialog"), "real dialog is skipped")
+    check(!ok("AXWindow", "AXFloatingWindow"), "panel is skipped")
+    check(!ok("AXWindow", "AXStandardWindow", fullScreen: true), "full-screen window is skipped")
+    check(!ok("AXScrollArea", nil), "Finder desktop is skipped")
+    check(!ok("AXHelpTag", "AXUnknown"), "tooltip is skipped")
+}
+
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

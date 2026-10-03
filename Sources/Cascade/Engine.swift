@@ -67,8 +67,17 @@ final class Engine {
         }
     }
 
-    private func performCascade(_ scope: Scope, settings: CascadeSettings, displays: [Display], pointer: Display) {
-        let windows = WindowSource.collect(scope)
+    #if DEBUG
+    /// Debug-only: run a cascade synchronously, limited to one app's windows (for end-to-end tests).
+    func cascadeForTesting(_ scope: Scope, settings: CascadeSettings, onlyBundleID: String) {
+        let displays = Display.all()
+        performCascade(scope, settings: settings, displays: displays, pointer: displays[0], onlyBundleID: onlyBundleID)
+    }
+    #endif
+
+    private func performCascade(_ scope: Scope, settings: CascadeSettings, displays: [Display], pointer: Display,
+                                onlyBundleID: String? = nil) {
+        let windows = WindowSource.collect(scope).filter { onlyBundleID == nil || $0.bundleID == onlyBundleID }
         guard !windows.isEmpty else { DispatchQueue.main.async { NSSound.beep() }; return }
         pruneOverrides()
 

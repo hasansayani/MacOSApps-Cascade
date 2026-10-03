@@ -347,6 +347,31 @@ if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
 }
 
 #if DEBUG
+// Debug-only: `Cascade --test-cascade-all <bundleID>` runs "Cascade All" on that app's windows only.
+if let i = CommandLine.arguments.firstIndex(of: "--test-cascade-all"), i + 1 < CommandLine.arguments.count {
+    Engine().cascadeForTesting(.all, settings: CascadeSettings(), onlyBundleID: CommandLine.arguments[i + 1])
+    exit(0)
+}
+
+// Debug-only: `Cascade --probe` prints raw Accessibility results per app.
+if CommandLine.arguments.contains("--probe") {
+    print("trusted:", AXIsProcessTrusted())
+    for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
+        let el = AXUIElementCreateApplication(app.processIdentifier)
+        var value: CFTypeRef?
+        let err = AXUIElementCopyAttributeValue(el, kAXWindowsAttribute as CFString, &value)
+        let wins = (value as? [AXUIElement]) ?? []
+        print(app.bundleIdentifier ?? "?", "windows err:", err.rawValue, "count:", wins.count)
+        for w in wins.prefix(4) {
+            let v = w.attrs([kAXRoleAttribute, kAXSubroleAttribute, "AXFullScreen", kAXMinimizedAttribute, kAXPositionAttribute, kAXSizeAttribute])
+            var single: CFTypeRef?
+            let roleErr = AXUIElementCopyAttributeValue(w, kAXRoleAttribute as CFString, &single)
+            print("   multi:", v.map { $0.map { "\($0)".prefix(30) } ?? "nil" }, "| single role err:", roleErr.rawValue, single as? String ?? "-", "| id:", w.windowID ?? 0)
+        }
+    }
+    exit(0)
+}
+
 // Debug-only: `Cascade --minimize <bundleID>` minimizes that app's first window.
 if let i = CommandLine.arguments.firstIndex(of: "--minimize"), i + 1 < CommandLine.arguments.count,
    let app = NSRunningApplication.runningApplications(withBundleIdentifier: CommandLine.arguments[i + 1]).first,

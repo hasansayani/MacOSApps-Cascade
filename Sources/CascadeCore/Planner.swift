@@ -152,3 +152,16 @@ public enum Planner {
         return result.map { $0 ?? 0 }
     }
 }
+
+public enum WindowFilter {
+    /// Whether an Accessibility window should be cascaded.
+    ///
+    /// Normal windows report the subrole `AXStandardWindow`. While a window is minimized, current
+    /// macOS reports it as `AXDialog` instead, so minimized dialogs-by-subrole must be accepted or
+    /// "Cascade All" would silently skip every minimized window. Real dialogs can't be minimized.
+    public static func isCascadable(role: String?, subrole: String?, minimized: Bool, fullScreen: Bool) -> Bool {
+        guard role == "AXWindow", !fullScreen else { return false }
+        if subrole == "AXStandardWindow" { return true }
+        return minimized && subrole == "AXDialog"
+    }
+}
