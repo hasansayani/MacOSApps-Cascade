@@ -5,6 +5,7 @@ import ServiceManagement
 
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
+    var borders: BorderController? = nil
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -113,6 +114,38 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("Outline each app's windows in its own color", isOn: s.bordersEnabled)
+                if settings.bordersEnabled {
+                    Picker("Style", selection: s.borderStyle) {
+                        Text("Icon colors").tag(BorderStyle.natural)
+                        Text("Vibrant").tag(BorderStyle.vibrant)
+                        Text("High contrast").tag(BorderStyle.highContrast)
+                        Text("One color").tag(BorderStyle.custom)
+                    }
+                    .pickerStyle(.segmented)
+                    if settings.borderStyle == .custom {
+                        ColorPicker("Border color", selection: Binding(
+                            get: {
+                                let c = settings.borderCustomColor
+                                return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
+                            },
+                            set: { color in
+                                if let c = NSColor(color).usingColorSpace(.sRGB) {
+                                    store.settings.borderCustomColor = RGBColor(red: c.redComponent, green: c.greenComponent,
+                                                                                blue: c.blueComponent)
+                                }
+                            }), supportsOpacity: false)
+                    }
+                    PointSlider(title: "Thickness", value: s.borderWidth, range: CascadeSettings.borderWidthRange)
+                    if let borders { BorderSwatches(borders: borders) }
+                }
+            } header: {
+                Text("Window Borders")
+            } footer: {
+                Text(borderFooter).font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
                 MenuBarIconPicker(selection: s.menuBarIcon, customTemplate: s.customIconIsTemplate)
                 AppIconPicker(selection: s.appIcon)
             } header: {
@@ -139,6 +172,15 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 520)
         .frame(minHeight: 560)
+    }
+
+    private var borderFooter: String {
+        switch settings.borderStyle {
+        case .natural: return "Each app's color is taken from its icon. Apps in use always get clearly different colors."
+        case .vibrant: return "Icon colors at full strength with a soft glow, for maximum visibility."
+        case .highContrast: return "Icon colors on a dark band, readable over light and dark backgrounds alike."
+        case .custom: return "Every app's windows get the same color."
+        }
     }
 
     private func setLaunchAtLogin(_ enabled: Bool) {
@@ -177,6 +219,33 @@ private struct PointSlider: View {
                 Slider(value: $value, in: range, step: 1)
                 Text("\(Int(value)) pt").monospacedDigit().frame(width: 52, alignment: .trailing)
             }
+        }
+    }
+}
+
+/// The colors currently assigned to apps with windows on screen.
+private struct BorderSwatches: View {
+    let borders: BorderController
+    @State private var colors: [(name: String, color: NSColor)] = []
+
+    var body: some View {
+        Group {
+            if !colors.isEmpty {
+                LabeledContent("In use") {
+                    HStack(spacing: 10) {
+                        ForEach(Array(colors.prefix(8).enumerated()), id: \.offset) { _, entry in
+                            HStack(spacing: 4) {
+                                RoundedRectangle(cornerRadius: 3).fill(Color(nsColor: entry.color)).frame(width: 12, height: 12)
+                                Text(entry.name).font(.caption).lineLimit(1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear { colors = borders.currentColors }
+        .onReceive(NotificationCenter.default.publisher(for: BorderController.colorsDidChange)) { _ in
+            colors = borders.currentColors
         }
     }
 }

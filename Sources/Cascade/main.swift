@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store = SettingsStore.shared
     private let engine = Engine()
     private lazy var dragSnapper = DragSnapper(engine: engine) { [store] in store.settings }
+    let borders = BorderController()
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
     private var cancellables: Set<AnyCancellable> = []
@@ -70,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         registerHotKeys()
         engine.invalidateLayouts()
         if settings.dragToSnap { dragSnapper.start() } else { dragSnapper.stop() }
+        borders.apply(settings)
         statusItem.button?.toolTip = "Cascade windows" + (settings.cascadeVisibleShortcut.map { " (\($0.displayString))" } ?? "")
         applyIcons()
     }
@@ -143,6 +145,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         store.settings.groupingMode = sender.tag == 0 ? .application : .manual
     }
 
+    @objc private func toggleBorders() {
+        store.settings.bordersEnabled.toggle()
+    }
+
     @objc private func toggleLogin() {
         do {
             if SMAppService.mainApp.status == .enabled {
@@ -185,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered, defer: false)
             window.title = "Cascade Settings"
-            window.contentView = NSHostingView(rootView: SettingsView(store: store))
+            window.contentView = NSHostingView(rootView: SettingsView(store: store, borders: borders))
             window.isReleasedWhenClosed = false
             window.center()
             window.setFrameAutosaveName("CascadeSettings")
@@ -250,6 +256,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let groupsRoot = NSMenuItem(title: "Cascade Groups", action: nil, keyEquivalent: "")
         groupsRoot.submenu = groupsMenu
         menu.addItem(groupsRoot)
+
+        let bordersItem = item("Show Window Borders", #selector(toggleBorders))
+        bordersItem.state = settings.bordersEnabled ? .on : .off
+        menu.addItem(bordersItem)
 
         menu.addItem(.separator())
         let login = item("Launch at Login", #selector(toggleLogin))
@@ -350,6 +360,18 @@ if let i = CommandLine.arguments.firstIndex(of: "--benchmark") {
 // Debug-only: `Cascade --test-cascade-all <bundleID>` runs "Cascade All" on that app's windows only.
 if let i = CommandLine.arguments.firstIndex(of: "--test-cascade-all"), i + 1 < CommandLine.arguments.count {
     Engine().cascadeForTesting(.all, settings: CascadeSettings(), onlyBundleID: CommandLine.arguments[i + 1])
+    exit(0)
+}
+
+// Debug-only: `Cascade --render-borders out.png [natural|vibrant|highContrast|custom]`
+if let i = CommandLine.arguments.firstIndex(of: "--render-borders"), i + 1 < CommandLine.arguments.count {
+    _ = NSApplication.shared
+    var settings = CascadeSettings()
+    if i + 2 < CommandLine.arguments.count, let style = BorderStyle(rawValue: CommandLine.arguments[i + 2]) {
+        settings.borderStyle = style
+    }
+    settings.borderWidth = 4
+    BorderController().renderSnapshot(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]), settings: settings)
     exit(0)
 }
 

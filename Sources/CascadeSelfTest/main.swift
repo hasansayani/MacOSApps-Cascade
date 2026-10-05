@@ -225,5 +225,49 @@ test("minimized windows are cascadable even though macOS calls them dialogs") {
     check(!ok("AXHelpTag", "AXUnknown"), "tooltip is skipped")
 }
 
+test("border colors come from icons and stay distinct between apps") {
+    let sep = BorderPalette.minimumSeparation
+    func distinct(_ hues: [String: Double]) -> Bool {
+        let v = Array(hues.values)
+        for i in v.indices { for j in v.indices where i < j { if BorderPalette.hueDistance(v[i], v[j]) < sep - 1e-9 { return false } } }
+        return true
+    }
+    // Firefox (orange), Chrome (red/yellow/green/blue), Safari (blue), Mail (blue): blue clashes.
+    let apps: [(key: String, candidates: [Double])] = [
+        ("firefox", [0.07, 0.75]), ("chrome", [0.0, 0.14, 0.33, 0.6]),
+        ("safari", [0.58]), ("mail", [0.6, 0.0]), ("terminal", []),
+    ]
+    let hues = BorderPalette.assignHues(apps: apps)
+    check(hues.count == 5, "every app gets a color")
+    check(distinct(hues), "all colors at least 30° apart: \(hues)")
+    check(hues["firefox"] == 0.07, "first app keeps its icon color")
+    check(hues["safari"] == 0.58, "safari keeps blue")
+    check(BorderPalette.hueDistance(hues["mail"]!, 0.58) >= sep, "mail moved off safari's blue")
+    // Stable: re-running with the previous result changes nothing.
+    check(BorderPalette.assignHues(apps: apps, previous: hues) == hues, "stable across refreshes")
+    // A newly opened app adapts; existing apps keep their colors.
+    let more = BorderPalette.assignHues(apps: apps + [("maps", [0.07])], previous: hues)
+    check(apps.allSatisfy { more[$0.key] == hues[$0.key] }, "existing apps keep colors when another opens")
+    check(distinct(more), "new app still distinct")
+    // Gray icons get a deterministic hue.
+    check(BorderPalette.stableHue(for: "terminal") == BorderPalette.stableHue(for: "terminal"), "stable gray hue")
+    // Many apps: never crashes, spreads hues as far as possible.
+    let many = (0..<20).map { (key: "app\($0)", candidates: [0.6]) }
+    let spread = BorderPalette.assignHues(apps: many)
+    check(spread.count == 20 && Set(spread.values.map { Int($0 * 360) }).count == 20, "20 apps get 20 different hues")
+}
+
+test("border settings round trip and clamp") {
+    var b = CascadeSettings()
+    check(b.bordersEnabled && b.borderStyle == .natural, "borders on with icon colors by default")
+    b.borderStyle = .custom
+    b.borderCustomColor = RGBColor(red: 0.2, green: 0.4, blue: 0.6)
+    b.borderWidth = 5
+    let back = try! JSONDecoder().decode(CascadeSettings.self, from: try! JSONEncoder().encode(b))
+    check(back == b, "round trip")
+    b.borderWidth = 50
+    check(b.sanitized().borderWidth == 8, "width clamped")
+}
+
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

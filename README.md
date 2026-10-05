@@ -58,6 +58,11 @@ A live preview at the top of Settings shows the resulting layout.
   including minimized windows and windows of hidden apps. You can instead gather every window onto
   the display under the pointer.
 - **Keyboard shortcuts**: click a shortcut, then press a new one. Esc cancels; Delete clears it.
+- **Window borders**: outline every app's windows in that app's color, taken from its icon. Apps on
+  screen always get clearly different colors. Styles: *Icon colors*, *Vibrant* (full-strength with a
+  glow), *High contrast* (color on a dark band), or *One color* of your choice; adjustable thickness.
+  Turn borders off in Settings or from the menu (*Show Window Borders*). Borders are left out of
+  screenshots and screen recordings.
 - **Appearance**: choose the menu bar icon (five designs, three macOS symbols, or your own image)
   and an app icon color (Ocean, Graphite, Sunset, Forest, Grape). A custom image can follow the
   menu bar's light/dark color or keep its own colors.

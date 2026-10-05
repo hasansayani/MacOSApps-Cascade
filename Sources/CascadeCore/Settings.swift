@@ -108,6 +108,14 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     /// ⌃⌥1…⌃⌥9 snap the focused window to group 1…9.
     public var snapHotkeys: Bool = true
 
+    // Window borders
+    public var bordersEnabled: Bool = true
+    public var borderStyle: BorderStyle = .natural
+    /// Border thickness in points.
+    public var borderWidth: Double = 3
+    /// Used when `borderStyle == .custom`.
+    public var borderCustomColor = RGBColor(red: 1.0, green: 0.42, blue: 0.0)
+
     // Appearance
     public var menuBarIcon: MenuBarIconStyle = .cascade
     /// Tint a custom menu bar image to match the menu bar (best for single-color artwork).
@@ -124,6 +132,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     public static let percentRange: ClosedRange<Double> = 20...100
     public static let maxColumns = 6
     public static let maxRows = 4
+    public static let borderWidthRange: ClosedRange<Double> = 1...8
 
     /// Clamp values loaded from disk or edited in the UI into supported ranges.
     public func sanitized() -> CascadeSettings {
@@ -135,6 +144,10 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         s.columns = min(max(s.columns, 0), Self.maxColumns)
         s.rows = min(max(s.rows, 1), Self.maxRows)
         s.groupGap = s.groupGap.clamped(to: 0...100)
+        s.borderWidth = s.borderWidth.clamped(to: Self.borderWidthRange)
+        s.borderCustomColor = RGBColor(red: s.borderCustomColor.red.clamped(to: 0...1),
+                                       green: s.borderCustomColor.green.clamped(to: 0...1),
+                                       blue: s.borderCustomColor.blue.clamped(to: 0...1))
         s.appGroups = s.appGroups.filter { $0.value >= 0 && $0.value < Self.maxColumns * Self.maxRows }
         return s
     }
@@ -158,6 +171,10 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         dragToSnap = (try? c.decode(Bool.self, forKey: .dragToSnap)) ?? d.dragToSnap
         snapModifier = (try? c.decode(SnapModifier.self, forKey: .snapModifier)) ?? d.snapModifier
         snapHotkeys = (try? c.decode(Bool.self, forKey: .snapHotkeys)) ?? d.snapHotkeys
+        bordersEnabled = (try? c.decode(Bool.self, forKey: .bordersEnabled)) ?? d.bordersEnabled
+        borderStyle = (try? c.decode(BorderStyle.self, forKey: .borderStyle)) ?? d.borderStyle
+        borderWidth = (try? c.decode(Double.self, forKey: .borderWidth)) ?? d.borderWidth
+        borderCustomColor = (try? c.decode(RGBColor.self, forKey: .borderCustomColor)) ?? d.borderCustomColor
         menuBarIcon = (try? c.decode(MenuBarIconStyle.self, forKey: .menuBarIcon)) ?? d.menuBarIcon
         customIconIsTemplate = (try? c.decode(Bool.self, forKey: .customIconIsTemplate)) ?? d.customIconIsTemplate
         appIcon = (try? c.decode(AppIconStyle.self, forKey: .appIcon)) ?? d.appIcon
@@ -185,6 +202,10 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         try c.encode(dragToSnap, forKey: .dragToSnap)
         try c.encode(snapModifier, forKey: .snapModifier)
         try c.encode(snapHotkeys, forKey: .snapHotkeys)
+        try c.encode(bordersEnabled, forKey: .bordersEnabled)
+        try c.encode(borderStyle, forKey: .borderStyle)
+        try c.encode(borderWidth, forKey: .borderWidth)
+        try c.encode(borderCustomColor, forKey: .borderCustomColor)
         try c.encode(menuBarIcon, forKey: .menuBarIcon)
         try c.encode(customIconIsTemplate, forKey: .customIconIsTemplate)
         try c.encode(appIcon, forKey: .appIcon)
@@ -195,7 +216,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case sizeMode, widthPercent, heightPercent, revealTop, revealLeft, columns, rows, groupGap,
              groupingMode, collapseEmptyGroups, appGroups, displayMode, dragToSnap, snapModifier,
-             snapHotkeys, menuBarIcon, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
+             snapHotkeys, bordersEnabled, borderStyle, borderWidth, borderCustomColor, menuBarIcon, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
     }
 }
 
