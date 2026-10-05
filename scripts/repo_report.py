@@ -360,7 +360,7 @@ def label_svg(r):
     row("Input Monitoring (keys)", "Used" if sec["keyboard_monitor"] else "Not used")
     row("Network access", "None" if sec["network_calls"] == 0 else f"{sec['network_calls']} call sites")
     row("Data collected / telemetry", "None")
-    row("Files written", "Preferences only")
+    row("Files written", "Settings + custom icon")
     row("Launch at login", "Optional, off")
     row("Entitlements", str(sec["entitlements"]))
     row("App Sandbox", "No (incompatible with AX)")
@@ -378,7 +378,7 @@ def label_svg(r):
         sc = rt["scan"]
         row("Window scan + layout", f"{sc['median_ms']} ms median", True)
         row(f"({sc['windows']} windows, {sc['apps']} apps)", f"{sc['p95_ms']} ms p95", indent=14)
-    row("Background work", "Event-driven, no polling*", line=False)
+    row("Background work", "Event-driven + 1.5 s check*", line=False)
     y += 3
     bar(5)
 
@@ -396,7 +396,8 @@ def label_svg(r):
                                 "used to identify windows. " if sec["private_apis"] else "")
     para(allergens + "Requires Accessibility permission to move windows.", bold_prefix="CONTAINS:")
     y += 6
-    para("* Except a 2-second permission check that stops once Accessibility is granted.", size=9.5)
+    para("* Window borders re-check window positions every 1.5 s (well under a millisecond) and follow "
+         "drags at 60 Hz. A 2-second permission check runs only until Accessibility is granted.", size=9.5)
     y += 2
     para(f"Measured {r['date']} on {r['machine']}.", size=9.5)
     y += PAD

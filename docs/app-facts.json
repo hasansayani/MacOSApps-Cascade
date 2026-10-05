@@ -1,46 +1,46 @@
 {
   "version": "2.1.0",
   "min_macos": "13",
-  "date": "2026-10-01",
+  "date": "2026-10-05",
   "machine": "Apple M5, macOS 27.0.1",
   "code": {
     "CascadeCore": {
-      "files": 3,
-      "code": 344,
-      "comments": 69,
-      "blank": 49
+      "files": 4,
+      "code": 450,
+      "comments": 103,
+      "blank": 64
     },
     "Cascade": {
-      "files": 7,
-      "code": 1307,
-      "comments": 83,
-      "blank": 198
+      "files": 9,
+      "code": 2309,
+      "comments": 158,
+      "blank": 300
     },
     "CascadeSelfTest": {
       "files": 1,
-      "code": 182,
-      "comments": 5,
-      "blank": 20
+      "code": 240,
+      "comments": 10,
+      "blank": 23
     }
   },
   "tests": {
-    "suites": 13,
-    "checks_passed": 86,
-    "checks_total": 86
+    "suites": 16,
+    "checks_passed": 109,
+    "checks_total": 109
   },
   "coverage": {
-    "core_lines_pct": 98.0,
-    "core_functions_pct": 93.5,
-    "core_regions_pct": 92.7
+    "core_lines_pct": 98.7,
+    "core_functions_pct": 96.1,
+    "core_regions_pct": 94.0
   },
   "size": {
-    "app_bytes": 1288869,
-    "binary_bytes": 907728,
+    "app_bytes": 1681502,
+    "binary_bytes": 1296176,
     "slices": {
-      "x86_64": 447888,
-      "arm64": 432592
+      "x86_64": 641168,
+      "arm64": 624432
     },
-    "zip_bytes": 707219
+    "zip_bytes": 860098
   },
   "security": {
     "accessibility": true,
@@ -62,19 +62,20 @@
       "Combine",
       "ServiceManagement",
       "SwiftUI",
+      "UniformTypeIdentifiers",
       "os"
     ]
   },
   "runtime": {
-    "idle_cpu_pct": 4.2,
-    "idle_memory_mb": 110.7,
+    "idle_cpu_pct": 0.4,
+    "idle_memory_mb": 30.5,
     "threads": 6,
     "scan": {
       "runs": 25,
-      "windows": 5,
-      "apps": 2,
+      "windows": 6,
+      "apps": 5,
       "median_ms": 1.1,
-      "p95_ms": 17.8
+      "p95_ms": 4.8
     }
   }
 }

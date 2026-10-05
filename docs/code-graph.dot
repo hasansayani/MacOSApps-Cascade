@@ -5,42 +5,53 @@ digraph Cascade {
   subgraph cluster_CascadeCore {
     label=<<b>CascadeCore</b>  <font color="#666666">Core logic</font>>;
     style="rounded,filled"; fillcolor="#eef4ff"; color="#3b6fd8"; penwidth=1.5; margin=14;
+    CascadeCore_Borders [label=<<b>Borders.swift</b><br/><font point-size="10" color="#555555">BorderStyle, BorderPalette, RGBColor<br/>65 lines</font>>];
     CascadeCore_Layout [label=<<b>Layout.swift</b><br/><font point-size="10" color="#555555">GroupGrid, CascadeLayout, DisplayAssigner<br/>97 lines</font>>];
-    CascadeCore_Planner [label=<<b>Planner.swift</b><br/><font point-size="10" color="#555555">Planner, PlanWindow, DropTarget<br/>119 lines</font>>];
-    CascadeCore_Settings [label=<<b>Settings.swift</b><br/><font point-size="10" color="#555555">CascadeSettings, Shortcut, SnapModifier<br/>128 lines</font>>];
+    CascadeCore_Planner [label=<<b>Planner.swift</b><br/><font point-size="10" color="#555555">Planner, PlanWindow, DropTarget<br/>126 lines</font>>];
+    CascadeCore_Settings [label=<<b>Settings.swift</b><br/><font point-size="10" color="#555555">CascadeSettings, Shortcut, MenuBarIconStyle<br/>162 lines</font>>];
   }
   subgraph cluster_Cascade {
     label=<<b>Cascade</b>  <font color="#666666">App</font>>;
     style="rounded,filled"; fillcolor="#f4f4f4"; color="#555555"; penwidth=1.5; margin=14;
     Cascade_Accessibility [label=<<b>Accessibility.swift</b><br/><font point-size="10" color="#555555">Display, Permissions<br/>150 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
+    Cascade_Borders [label=<<b>Borders.swift</b><br/><font point-size="10" color="#555555">BorderController, IconColors, BorderOverlay<br/>454 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
     Cascade_DragSnapper [label=<<b>DragSnapper.swift</b><br/><font point-size="10" color="#555555">DragSnapper, SnapOverlay, OverlayView<br/>150 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
-    Cascade_Engine [label=<<b>Engine.swift</b><br/><font point-size="10" color="#555555">Engine<br/>182 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
-    Cascade_SettingsView [label=<<b>SettingsView.swift</b><br/><font point-size="10" color="#555555">SettingsView, PercentSlider, PointSlider<br/>319 lines</font><br/><font point-size="9.5" color="#b35c00">▸ SwiftUI · Login items</font>>];
-    Cascade_Support [label=<<b>Support.swift</b><br/><font point-size="10" color="#555555">HotKeys, SettingsStore, StatusIcon<br/>138 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Carbon hot keys</font>>];
-    Cascade_WindowSource [label=<<b>WindowSource.swift</b><br/><font point-size="10" color="#555555">LiveWindow, WindowSource, Scope<br/>94 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
-    Cascade_main [label=<<b>main.swift</b><br/><font point-size="10" color="#555555">AppDelegate<br/>274 lines</font><br/><font point-size="9.5" color="#b35c00">▸ SwiftUI · Login items</font>>];
+    Cascade_Engine [label=<<b>Engine.swift</b><br/><font point-size="10" color="#555555">Engine<br/>218 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
+    Cascade_Icons [label=<<b>Icons.swift</b><br/><font point-size="10" color="#555555">MenuBarIcons, CustomIconStore, AppIconRenderer<br/>238 lines</font>>];
+    Cascade_SettingsView [label=<<b>SettingsView.swift</b><br/><font point-size="10" color="#555555">SettingsView, PercentSlider, PointSlider<br/>486 lines</font><br/><font point-size="9.5" color="#b35c00">▸ SwiftUI · Login items</font>>];
+    Cascade_Support [label=<<b>Support.swift</b><br/><font point-size="10" color="#555555">HotKeys, SettingsStore<br/>117 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Carbon hot keys</font>>];
+    Cascade_WindowSource [label=<<b>WindowSource.swift</b><br/><font point-size="10" color="#555555">LiveWindow, WindowSource, Scope<br/>93 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
+    Cascade_main [label=<<b>main.swift</b><br/><font point-size="10" color="#555555">AppDelegate<br/>403 lines</font><br/><font point-size="9.5" color="#b35c00">▸ SwiftUI · Login items</font>>];
   }
   subgraph cluster_CascadeSelfTest {
     label=<<b>CascadeSelfTest</b>  <font color="#666666">Self-tests</font>>;
     style="rounded,filled"; fillcolor="#eefaf0"; color="#2f8f46"; penwidth=1.5; margin=14;
-    CascadeSelfTest_main [label=<<b>main.swift</b><br/><font point-size="10" color="#555555">entry point<br/>182 lines</font>>];
+    CascadeSelfTest_main [label=<<b>main.swift</b><br/><font point-size="10" color="#555555">entry point<br/>240 lines</font>>];
   }
   labelloc=b; label=<<font point-size="10" color="#555555">→ uses a type from    ⇒ package depends on package    <font color="#b35c00">▸ macOS framework needing special access</font></font>>;
   CascadeCore_Layout -> CascadeCore_Settings;
   CascadeCore_Planner -> CascadeCore_Layout;
   CascadeCore_Planner -> CascadeCore_Settings;
+  CascadeCore_Settings -> CascadeCore_Borders;
+  Cascade_Borders -> Cascade_Accessibility;
+  Cascade_Borders -> Cascade_SettingsView;
   Cascade_DragSnapper -> Cascade_Accessibility;
   Cascade_DragSnapper -> Cascade_Engine;
   Cascade_Engine -> Cascade_Accessibility;
   Cascade_Engine -> Cascade_WindowSource;
+  Cascade_Icons -> Cascade_SettingsView;
+  Cascade_SettingsView -> Cascade_Borders;
+  Cascade_SettingsView -> Cascade_Icons;
   Cascade_SettingsView -> Cascade_Support;
   Cascade_WindowSource -> Cascade_Accessibility;
   Cascade_main -> Cascade_Accessibility;
+  Cascade_main -> Cascade_Borders;
   Cascade_main -> Cascade_DragSnapper;
   Cascade_main -> Cascade_Engine;
+  Cascade_main -> Cascade_Icons;
   Cascade_main -> Cascade_SettingsView;
   Cascade_main -> Cascade_Support;
   Cascade_main -> Cascade_WindowSource;
-  Cascade_Accessibility -> CascadeCore_Layout [ltail=cluster_Cascade, lhead=cluster_CascadeCore, penwidth=2.4, color="#3b6fd8", label=" uses ", fontname="Helvetica", fontsize=10, fontcolor="#3b6fd8"];
-  CascadeSelfTest_main -> CascadeCore_Layout [ltail=cluster_CascadeSelfTest, lhead=cluster_CascadeCore, penwidth=2.4, color="#3b6fd8", label=" uses ", fontname="Helvetica", fontsize=10, fontcolor="#3b6fd8"];
+  Cascade_Accessibility -> CascadeCore_Borders [ltail=cluster_Cascade, lhead=cluster_CascadeCore, penwidth=2.4, color="#3b6fd8", label=" uses ", fontname="Helvetica", fontsize=10, fontcolor="#3b6fd8"];
+  CascadeSelfTest_main -> CascadeCore_Borders [ltail=cluster_CascadeSelfTest, lhead=cluster_CascadeCore, penwidth=2.4, color="#3b6fd8", label=" uses ", fontname="Helvetica", fontsize=10, fontcolor="#3b6fd8"];
 }
