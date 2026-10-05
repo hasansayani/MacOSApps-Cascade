@@ -76,6 +76,16 @@ final class BorderController {
     private var dragTimer: Timer?
     private var refreshPending = false
 
+    /// Regular (Dock) apps by pid, and the Dock's pid. Cached: querying NSRunningApplication properties
+    /// is a LaunchServices round trip, far too slow to repeat on every refresh.
+    private struct AppInfo {
+        let key: String
+        let name: String
+        let app: NSRunningApplication
+    }
+    private var regularApps: [pid_t: AppInfo] = [:]
+    private var dockPID: pid_t?
+
     private var iconColors: [String: IconColors] = [:]
     private var hues: [String: Double] = [:]
     /// Last computed app colors, for the Settings swatches.
@@ -108,12 +118,14 @@ final class BorderController {
         }
         tokens.append(center.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] note in
             if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication { self?.observe(app) }
+            self?.reloadApps()
             self?.refreshSoon(followUps: true)
         })
         tokens.append(center.addObserver(forName: NSWorkspace.didTerminateApplicationNotification, object: nil, queue: .main) { [weak self] note in
             if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
                 self?.observers.removeValue(forKey: app.processIdentifier).map(Self.detach)
             }
+            self?.reloadApps()
             self?.refreshSoon()
         })
         tokens.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
@@ -121,6 +133,7 @@ final class BorderController {
             self?.rebuildOverlays()
             self?.refreshSoon()
         })
+        reloadApps()
         NSWorkspace.shared.runningApplications.forEach(observe)
 
         // Follow windows smoothly while anything is dragged; stop shortly after the mouse is released.
@@ -147,6 +160,15 @@ final class BorderController {
         overlays.removeAll()
         currentColors = []
         NotificationCenter.default.post(name: Self.colorsDidChange, object: nil)
+    }
+
+    private func reloadApps() {
+        let apps = NSWorkspace.shared.runningApplications
+        regularApps = Dictionary(apps.filter { $0.activationPolicy == .regular }.map { app in
+            (app.processIdentifier, AppInfo(key: app.bundleIdentifier ?? "pid:\(app.processIdentifier)",
+                                            name: app.localizedName ?? "App", app: app))
+        }, uniquingKeysWith: { a, _ in a })
+        dockPID = apps.first { $0.bundleIdentifier == "com.apple.dock" }?.processIdentifier
     }
 
     private func rebuildOverlays() {
@@ -216,7 +238,11 @@ final class BorderController {
 
     private func beginDragTracking() {
         guard running, dragTimer == nil else { return }
-        dragTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] _ in self?.refresh() }
+        dragTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            // Stop on our own if the mouse-up was missed (e.g. released over Cascade's own windows).
+            guard NSEvent.pressedMouseButtons & 1 != 0 else { self?.endDragTracking(); return }
+            self?.refresh()
+        }
     }
 
     private func endDragTracking() {
@@ -236,10 +262,8 @@ final class BorderController {
     private func refresh() {
         guard running else { return }
         let me = ProcessInfo.processInfo.processIdentifier
-        let apps = NSWorkspace.shared.runningApplications
-        let regular = Dictionary(apps.filter { $0.activationPolicy == .regular }.map { ($0.processIdentifier, $0) },
-                                 uniquingKeysWith: { a, _ in a })
-        let dock = apps.first { $0.bundleIdentifier == "com.apple.dock" }?.processIdentifier
+        let regular = regularApps
+        let dock = dockPID
 
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements],
                                                     kCGNullWindowID) as? [[String: Any]] else { return }
@@ -268,7 +292,7 @@ final class BorderController {
     }
 
     /// pid → border color, distinct per app among the apps that currently have windows.
-    private func colorsForApps(in windows: [WindowInfo], regular: [pid_t: NSRunningApplication]) -> [pid_t: NSColor] {
+    private func colorsForApps(in windows: [WindowInfo], regular: [pid_t: AppInfo]) -> [pid_t: NSColor] {
         // Front-most apps first: they get first pick of their icon colors.
         var order: [pid_t] = []
         for w in windows where w.isTarget && !order.contains(w.pid) { order.append(w.pid) }
@@ -279,10 +303,10 @@ final class BorderController {
             let color = NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
             order.forEach { result[$0] = color }
         } else {
-            func key(_ pid: pid_t) -> String { regular[pid]?.bundleIdentifier ?? "pid:\(pid)" }
+            func key(_ pid: pid_t) -> String { regular[pid]?.key ?? "pid:\(pid)" }
             let candidates = order.map { pid -> (key: String, candidates: [Double]) in
                 let k = key(pid)
-                if iconColors[k] == nil { iconColors[k] = IconColors.sample(regular[pid]?.icon ?? NSImage()) }
+                if iconColors[k] == nil { iconColors[k] = IconColors.sample(regular[pid]?.app.icon ?? NSImage()) }
                 return (k, iconColors[k]!.hues)
             }
             hues = BorderPalette.assignHues(apps: candidates, previous: hues)
@@ -303,7 +327,7 @@ final class BorderController {
         }
 
         let swatches = order.compactMap { pid in
-            result[pid].map { (name: regular[pid]?.localizedName ?? "App", color: $0) }
+            result[pid].map { (name: regular[pid]?.name ?? "App", color: $0) }
         }
         if swatches.map(\.name) != currentColors.map(\.name) || zip(swatches, currentColors).contains(where: { $0.color != $1.color }) {
             currentColors = swatches
@@ -326,6 +350,7 @@ extension BorderController {
         s.bordersEnabled = true
         self.settings = s
         running = true
+        reloadApps()
         let display = Display.all()[0]
         let overlay = BorderOverlay()
         overlays[display.id] = overlay
@@ -334,6 +359,21 @@ extension BorderController {
             print(k, "icon hues:", c.hues.prefix(3).map { Int($0 * 360) }, "→ assigned:", hues[k].map { Int($0 * 360) } ?? -1)
         }
         overlay.snapshot(size: display.frame.size, to: url)
+    }
+
+    /// Debug-only: average cost of the steps of one refresh.
+    func timeRefresh() {
+        running = true
+        reloadApps()
+        func ms(_ n: Int = 200, _ body: () -> Void) -> String {
+            let t = DispatchTime.now().uptimeNanoseconds
+            for _ in 0..<n { body() }
+            return String(format: "%.3f ms", Double(DispatchTime.now().uptimeNanoseconds - t) / 1e6 / Double(n))
+        }
+        print("CGWindowListCopyWindowInfo:", ms { _ = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) })
+        print("runningApplications+filter:", ms { _ = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }.map(\.processIdentifier) })
+        print("Display.all:", ms { _ = Display.all() })
+        print("full refresh:", ms { refresh() })
     }
 }
 
@@ -432,15 +472,29 @@ private final class BorderView: NSView {
 
     func update(items: [BorderOverlay.Item], style: BorderStyle, width: CGFloat) {
         guard items != self.items || style != self.style || width != self.width else { return }
-        self.items = items
-        self.style = style
-        self.width = width
-        needsDisplay = true
+        defer {
+            self.items = items
+            self.style = style
+            self.width = width
+        }
+        // A style change, or windows changing stacking order, can affect everything.
+        let added = items.filter { !self.items.contains($0) }
+        let removed = self.items.filter { !items.contains($0) }
+        guard style == self.style, width == self.width, !(added.isEmpty && removed.isEmpty) else {
+            needsDisplay = true
+            return
+        }
+        // Otherwise only the areas around windows that moved, appeared, vanished or changed color.
+        let margin = width * 4 + 4   // border, high-contrast band and glow
+        for item in added + removed {
+            setNeedsDisplay(item.frame.offsetBy(dx: -origin.x, dy: -origin.y).insetBy(dx: -margin, dy: -margin))
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-        ctx.clear(bounds)
+        ctx.clear(dirtyRect)
+        ctx.clip(to: dirtyRect)
         for item in items {   // back to front
             let rect = item.frame.offsetBy(dx: -origin.x, dy: -origin.y)
             // Erase borders of windows behind this one.

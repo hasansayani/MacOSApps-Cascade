@@ -375,6 +375,12 @@ if let i = CommandLine.arguments.firstIndex(of: "--render-borders"), i + 1 < Com
     exit(0)
 }
 
+if CommandLine.arguments.contains("--time-borders") {
+    _ = NSApplication.shared
+    BorderController().timeRefresh()
+    exit(0)
+}
+
 // Debug-only: `Cascade --probe` prints raw Accessibility results per app.
 if CommandLine.arguments.contains("--probe") {
     print("trusted:", AXIsProcessTrusted())
