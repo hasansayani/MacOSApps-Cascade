@@ -1,7 +1,7 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "min_macos": "13",
-  "date": "2026-10-05",
+  "date": "2026-10-06",
   "machine": "Apple M5, macOS 27.0.1",
   "code": {
     "CascadeCore": {
@@ -40,7 +40,7 @@
       "x86_64": 641168,
       "arm64": 624432
     },
-    "zip_bytes": 860098
+    "zip_bytes": 860103
   },
   "security": {
     "accessibility": true,
@@ -67,15 +67,15 @@
     ]
   },
   "runtime": {
-    "idle_cpu_pct": 0.4,
-    "idle_memory_mb": 30.5,
-    "threads": 6,
+    "idle_cpu_pct": 0.05,
+    "idle_memory_mb": 24.0,
+    "threads": 4,
     "scan": {
       "runs": 25,
-      "windows": 6,
-      "apps": 5,
-      "median_ms": 1.1,
-      "p95_ms": 4.8
+      "windows": 7,
+      "apps": 6,
+      "median_ms": 2.5,
+      "p95_ms": 7.6
     }
   }
 }
