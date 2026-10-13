@@ -435,6 +435,7 @@ if let i = CommandLine.arguments.firstIndex(of: "--test-restore"), i + 1 < Comma
 
 // Debug-only: `Cascade --render-menubar-icons out.png` draws every menu bar icon at 8x on light and dark strips.
 if let i = CommandLine.arguments.firstIndex(of: "--render-menubar-icons"), i + 1 < CommandLine.arguments.count {
+    let colorMode = (i + 2 < CommandLine.arguments.count ? MenuBarIconColor(rawValue: CommandLine.arguments[i + 2]) : nil) ?? .monochrome
     let styles = MenuBarIconStyle.allCases.filter { $0 != .custom }
     let scale: CGFloat = 8, cell = NSSize(width: 26, height: 22)
     let sheet = NSImage(size: NSSize(width: cell.width * CGFloat(styles.count) * scale, height: cell.height * 2 * scale), flipped: false) { _ in
@@ -442,13 +443,13 @@ if let i = CommandLine.arguments.firstIndex(of: "--render-menubar-icons"), i + 1
             (dark ? NSColor(white: 0.15, alpha: 1) : NSColor(white: 0.93, alpha: 1)).setFill()
             NSRect(x: 0, y: CGFloat(row) * cell.height * scale, width: cell.width * CGFloat(styles.count) * scale, height: cell.height * scale).fill()
             for (col, style) in styles.enumerated() {
-                let icon = MenuBarIcons.image(style)
-                let tinted = NSImage(size: icon.size, flipped: false) { r in
+                let icon = MenuBarIcons.image(style, color: colorMode)
+                let tinted = icon.isTemplate ? NSImage(size: icon.size, flipped: false) { r in
                     icon.draw(in: r)
                     (dark ? NSColor.white : NSColor.black).set()
                     r.fill(using: .sourceAtop)
                     return true
-                }
+                } : icon
                 let size = NSSize(width: icon.size.width * scale, height: icon.size.height * scale)
                 tinted.draw(in: NSRect(x: (CGFloat(col) * cell.width + (cell.width - icon.size.width) / 2) * scale,
                                        y: (CGFloat(row) * cell.height + (cell.height - icon.size.height) / 2) * scale,

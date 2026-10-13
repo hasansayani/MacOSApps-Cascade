@@ -29,76 +29,113 @@ enum MenuBarIcons {
 
     /// The icon to show for the given settings. Falls back to the default design if a custom image is missing.
     static func image(for settings: CascadeSettings) -> NSImage {
-        image(settings.menuBarIcon, customTemplate: settings.customIconIsTemplate)
+        image(settings.menuBarIcon, color: settings.menuBarIconColor, theme: settings.appIcon,
+              customTemplate: settings.customIconIsTemplate)
     }
 
-    static func image(_ style: MenuBarIconStyle, customTemplate: Bool = true) -> NSImage {
+    static func image(_ style: MenuBarIconStyle, color: MenuBarIconColor = .monochrome, theme: AppIconStyle = .ocean,
+                      customTemplate: Bool = true) -> NSImage {
+        let palette = colors(color, theme: theme)
         switch style {
         case .custom:
-            guard let custom = CustomIconStore.load() else { return drawn(.cascade) }
+            guard let custom = CustomIconStore.load() else { return drawn(.cascade, palette: palette) }
             custom.isTemplate = customTemplate
             return custom
         case .symbolStack, .symbolLayers, .symbolWindows:
-            let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+            var config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+            // Symbol layers run front to back: the front window gets the front color, as in the drawn designs.
+            if let palette { config = config.applying(NSImage.SymbolConfiguration(paletteColors: Array(palette.prefix(3).reversed()))) }
             guard let symbol = NSImage(systemSymbolName: symbolNames[style]!, accessibilityDescription: "Cascade")?
-                .withSymbolConfiguration(config) else { return drawn(.cascade) }
-            symbol.isTemplate = true
+                .withSymbolConfiguration(config) else { return drawn(.cascade, palette: palette) }
+            symbol.isTemplate = palette == nil
             return symbol
         default:
-            return drawn(style)
+            return drawn(style, palette: palette)
         }
     }
 
-    /// Hand-drawn template designs. Everything is drawn in black; macOS tints template images to match
-    /// the menu bar (dark or light, highlighted or not).
-    private static func drawn(_ style: MenuBarIconStyle) -> NSImage {
+    /// Window colors, back to front; nil means a monochrome template icon.
+    static func colors(_ color: MenuBarIconColor, theme: AppIconStyle) -> [NSColor]? {
+        switch color {
+        case .monochrome:
+            return nil
+        case .multicolor:
+            // Saturated mid-tones that read on both light and dark menu bars.
+            return [NSColor(srgbRed: 0.20, green: 0.78, blue: 0.35, alpha: 1),   // green
+                    NSColor(srgbRed: 0.04, green: 0.52, blue: 1.00, alpha: 1),   // blue
+                    NSColor(srgbRed: 1.00, green: 0.58, blue: 0.00, alpha: 1),   // orange
+                    NSColor(srgbRed: 1.00, green: 0.22, blue: 0.37, alpha: 1)]   // pink (4-window designs)
+        case .appTheme:
+            return AppIconRenderer.accentColors(theme)
+        }
+    }
+
+    /// Hand-drawn designs. With no palette they are template images (drawn in black; macOS tints them to
+    /// match the menu bar). With a palette, each window gets a white body and a colored outline and title bar.
+    private static func drawn(_ style: MenuBarIconStyle, palette: [NSColor]? = nil) -> NSImage {
         let image = NSImage(size: size, flipped: true) { _ in
             NSColor.black.setStroke()
             NSColor.black.setFill()
+            func color(_ i: Int) -> NSColor? { palette.map { $0[i % $0.count] } }
             switch style {
             case .outline:
                 for i in 0..<3 {
-                    window(NSRect(x: 1 + CGFloat(i) * 3, y: 1 + CGFloat(i) * 2.5, width: 10, height: 8.5), titleBar: false)
+                    window(NSRect(x: 1 + CGFloat(i) * 3, y: 1 + CGFloat(i) * 2.5, width: 10, height: 8.5), titleBar: false,
+                           color: color(i))
                 }
             case .cards:
                 // A vertical stack: each card further back is narrower, like a deck seen from the front.
                 for i in 0..<3 {
                     let inset = CGFloat(2 - i) * 1.5
-                    window(NSRect(x: 2 + inset, y: 1 + CGFloat(i) * 3, width: 14 - inset * 2, height: 8.5), titleBar: true)
+                    window(NSRect(x: 2 + inset, y: 1 + CGFloat(i) * 3, width: 14 - inset * 2, height: 8.5), titleBar: true,
+                           color: color(i))
                 }
             case .groups:
                 // Two small cascades side by side: cascade groups.
                 for column in 0..<2 {
                     for i in 0..<2 {
                         let x = 0.75 + CGFloat(column) * 8.75 + CGFloat(i) * 2.5
-                        window(NSRect(x: x, y: 2 + CGFloat(i) * 3, width: 5.5, height: 7), titleBar: true, radius: 1)
+                        window(NSRect(x: x, y: 2 + CGFloat(i) * 3, width: 5.5, height: 7), titleBar: true, radius: 1,
+                               color: color(column * 2 + i))
                     }
                 }
             case .solid:
                 for i in 0..<3 {
                     let rect = NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9)
-                    window(rect, titleBar: i < 2)
-                    if i == 2 { NSBezierPath(roundedRect: rect, xRadius: 1.5, yRadius: 1.5).fill() }
+                    window(rect, titleBar: i < 2, color: color(i))
+                    if i == 2 {
+                        (color(i) ?? .black).setFill()
+                        NSBezierPath(roundedRect: rect, xRadius: 1.5, yRadius: 1.5).fill()
+                    }
                 }
             default:   // .cascade
                 for i in 0..<3 {
-                    window(NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9), titleBar: true)
+                    window(NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9), titleBar: true,
+                           color: color(i))
                 }
             }
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = palette == nil
         image.accessibilityDescription = "Cascade"
         return image
     }
 
-    /// One window outline. Whatever is underneath is erased first, so back windows show only their
-    /// exposed edges.
-    private static func window(_ rect: NSRect, titleBar: Bool, radius: CGFloat = 1.5) {
+    /// One window. Whatever is underneath is erased first, so back windows show only their exposed edges.
+    private static func window(_ rect: NSRect, titleBar: Bool, radius: CGFloat = 1.5, color: NSColor? = nil) {
         let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         NSGraphicsContext.current?.compositingOperation = .clear
         path.fill()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
+        if let color {
+            NSColor.white.setFill()
+            path.fill()
+            color.setStroke()
+            color.setFill()
+        } else {
+            NSColor.black.setStroke()
+            NSColor.black.setFill()
+        }
         path.lineWidth = 1.2
         path.stroke()
         if titleBar {
@@ -217,6 +254,19 @@ enum AppIconRenderer {
         case .grape:
             return Palette(top: rgb(0.64, 0.38, 0.96), bottom: rgb(0.30, 0.12, 0.56),
                            titleBars: [rgb(0.86, 0.77, 1.0), rgb(0.76, 0.62, 1.0), rgb(0.63, 0.47, 1.0)])
+        }
+    }
+
+    /// Strong versions of a theme's colors (back to front) for the menu bar icon: saturated and bright
+    /// enough to read on light and dark menu bars. Graphite stays gray on purpose.
+    static func accentColors(_ style: AppIconStyle) -> [NSColor] {
+        let p = palette(style)
+        return [p.top, p.titleBars[1], p.titleBars[2], p.bottom].map { c in
+            let rgb = c.usingColorSpace(.sRGB) ?? c
+            var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            rgb.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+            if style == .graphite { return NSColor(hue: h, saturation: s, brightness: min(max(b, 0.45), 0.6), alpha: 1) }
+            return NSColor(hue: h, saturation: max(s, 0.75), brightness: min(max(b, 0.8), 0.95), alpha: 1)
         }
     }
 

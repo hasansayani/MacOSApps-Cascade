@@ -146,7 +146,16 @@ struct SettingsView: View {
             }
 
             Section {
-                MenuBarIconPicker(selection: s.menuBarIcon, customTemplate: s.customIconIsTemplate)
+                MenuBarIconPicker(selection: s.menuBarIcon, customTemplate: s.customIconIsTemplate,
+                                  color: settings.menuBarIconColor, theme: settings.appIcon)
+                if settings.menuBarIcon != .custom {
+                    Picker("Icon color", selection: s.menuBarIconColor) {
+                        Text("Multicolor").tag(MenuBarIconColor.multicolor)
+                        Text("Match app icon").tag(MenuBarIconColor.appTheme)
+                        Text("Monochrome").tag(MenuBarIconColor.monochrome)
+                    }
+                    .pickerStyle(.segmented)
+                }
                 AppIconPicker(selection: s.appIcon)
             } header: {
                 Text("Appearance")
@@ -254,6 +263,8 @@ private struct BorderSwatches: View {
 private struct MenuBarIconPicker: View {
     @Binding var selection: MenuBarIconStyle
     @Binding var customTemplate: Bool
+    var color: MenuBarIconColor = .monochrome
+    var theme: AppIconStyle = .ocean
     /// Bumped when a new custom image is chosen so tiles redraw.
     @State private var customRevision = 0
 
@@ -311,7 +322,7 @@ private struct MenuBarIconPicker: View {
         if style == .custom && CustomIconStore.load() == nil {
             Image(systemName: "plus").foregroundStyle(.secondary)
         } else {
-            let image = MenuBarIcons.image(style, customTemplate: customTemplate)
+            let image = MenuBarIcons.image(style, color: color, theme: theme, customTemplate: customTemplate)
             Image(nsImage: image)
                 .renderingMode(image.isTemplate ? .template : .original)
                 .foregroundStyle(.primary)

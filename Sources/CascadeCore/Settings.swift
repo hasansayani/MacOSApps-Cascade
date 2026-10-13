@@ -37,6 +37,16 @@ public enum MenuBarIconStyle: String, Codable, CaseIterable, Sendable {
     case custom
 }
 
+/// How the menu bar icon is colored. Colored icons are easier to spot among other menu bar icons.
+public enum MenuBarIconColor: String, Codable, CaseIterable, Sendable {
+    /// Each window in the icon in its own bright color.
+    case multicolor
+    /// The colors of the chosen app icon theme.
+    case appTheme
+    /// Black or white, following the menu bar (classic template icon).
+    case monochrome
+}
+
 /// Color theme of the app icon shown in About, Settings and alerts.
 public enum AppIconStyle: String, Codable, CaseIterable, Sendable {
     case ocean, graphite, sunset, forest, grape
@@ -118,6 +128,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
 
     // Appearance
     public var menuBarIcon: MenuBarIconStyle = .cascade
+    public var menuBarIconColor: MenuBarIconColor = .multicolor
     /// Tint a custom menu bar image to match the menu bar (best for single-color artwork).
     public var customIconIsTemplate: Bool = true
     public var appIcon: AppIconStyle = .ocean
@@ -176,6 +187,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         borderWidth = (try? c.decode(Double.self, forKey: .borderWidth)) ?? d.borderWidth
         borderCustomColor = (try? c.decode(RGBColor.self, forKey: .borderCustomColor)) ?? d.borderCustomColor
         menuBarIcon = (try? c.decode(MenuBarIconStyle.self, forKey: .menuBarIcon)) ?? d.menuBarIcon
+        menuBarIconColor = (try? c.decode(MenuBarIconColor.self, forKey: .menuBarIconColor)) ?? d.menuBarIconColor
         customIconIsTemplate = (try? c.decode(Bool.self, forKey: .customIconIsTemplate)) ?? d.customIconIsTemplate
         appIcon = (try? c.decode(AppIconStyle.self, forKey: .appIcon)) ?? d.appIcon
         cascadeVisibleShortcut = c.contains(.cascadeVisibleShortcut)
@@ -207,6 +219,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         try c.encode(borderWidth, forKey: .borderWidth)
         try c.encode(borderCustomColor, forKey: .borderCustomColor)
         try c.encode(menuBarIcon, forKey: .menuBarIcon)
+        try c.encode(menuBarIconColor, forKey: .menuBarIconColor)
         try c.encode(customIconIsTemplate, forKey: .customIconIsTemplate)
         try c.encode(appIcon, forKey: .appIcon)
         try c.encode(cascadeVisibleShortcut, forKey: .cascadeVisibleShortcut)
@@ -216,7 +229,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case sizeMode, widthPercent, heightPercent, revealTop, revealLeft, columns, rows, groupGap,
              groupingMode, collapseEmptyGroups, appGroups, displayMode, dragToSnap, snapModifier,
-             snapHotkeys, bordersEnabled, borderStyle, borderWidth, borderCustomColor, menuBarIcon, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
+             snapHotkeys, bordersEnabled, borderStyle, borderWidth, borderCustomColor, menuBarIcon, menuBarIconColor, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
     }
 }
 
