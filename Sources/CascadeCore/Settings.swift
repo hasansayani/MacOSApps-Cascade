@@ -39,10 +39,18 @@ public enum MenuBarIconStyle: String, Codable, CaseIterable, Sendable {
 
 /// How the menu bar icon is colored. Colored icons are easier to spot among other menu bar icons.
 public enum MenuBarIconColor: String, Codable, CaseIterable, Sendable {
-    /// Each window in the icon in its own bright color.
+    /// Each window in the icon in its own color (green, blue, orange).
     case multicolor
+    /// Neon colors: lime, cyan, magenta, yellow.
+    case bright
+    /// Deep colors: forest, navy, maroon, plum, with a light edge so they read on dark menu bars.
+    case dark
+    /// Black outlines, white bodies and pure yellow/cyan/magenta title bars, with a white edge.
+    case highContrast
     /// The colors of the chosen app icon theme.
     case appTheme
+    /// Shades of one color the user picks (`menuBarIconCustomColor`).
+    case custom
     /// Black or white, following the menu bar (classic template icon).
     case monochrome
 }
@@ -129,6 +137,8 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     // Appearance
     public var menuBarIcon: MenuBarIconStyle = .cascade
     public var menuBarIconColor: MenuBarIconColor = .multicolor
+    /// Used when `menuBarIconColor == .custom`.
+    public var menuBarIconCustomColor = RGBColor(red: 0.55, green: 0.25, blue: 0.95)
     /// Tint a custom menu bar image to match the menu bar (best for single-color artwork).
     public var customIconIsTemplate: Bool = true
     public var appIcon: AppIconStyle = .ocean
@@ -159,6 +169,9 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         s.borderCustomColor = RGBColor(red: s.borderCustomColor.red.clamped(to: 0...1),
                                        green: s.borderCustomColor.green.clamped(to: 0...1),
                                        blue: s.borderCustomColor.blue.clamped(to: 0...1))
+        s.menuBarIconCustomColor = RGBColor(red: s.menuBarIconCustomColor.red.clamped(to: 0...1),
+                                            green: s.menuBarIconCustomColor.green.clamped(to: 0...1),
+                                            blue: s.menuBarIconCustomColor.blue.clamped(to: 0...1))
         s.appGroups = s.appGroups.filter { $0.value >= 0 && $0.value < Self.maxColumns * Self.maxRows }
         return s
     }
@@ -188,6 +201,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         borderCustomColor = (try? c.decode(RGBColor.self, forKey: .borderCustomColor)) ?? d.borderCustomColor
         menuBarIcon = (try? c.decode(MenuBarIconStyle.self, forKey: .menuBarIcon)) ?? d.menuBarIcon
         menuBarIconColor = (try? c.decode(MenuBarIconColor.self, forKey: .menuBarIconColor)) ?? d.menuBarIconColor
+        menuBarIconCustomColor = (try? c.decode(RGBColor.self, forKey: .menuBarIconCustomColor)) ?? d.menuBarIconCustomColor
         customIconIsTemplate = (try? c.decode(Bool.self, forKey: .customIconIsTemplate)) ?? d.customIconIsTemplate
         appIcon = (try? c.decode(AppIconStyle.self, forKey: .appIcon)) ?? d.appIcon
         cascadeVisibleShortcut = c.contains(.cascadeVisibleShortcut)
@@ -220,6 +234,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
         try c.encode(borderCustomColor, forKey: .borderCustomColor)
         try c.encode(menuBarIcon, forKey: .menuBarIcon)
         try c.encode(menuBarIconColor, forKey: .menuBarIconColor)
+        try c.encode(menuBarIconCustomColor, forKey: .menuBarIconCustomColor)
         try c.encode(customIconIsTemplate, forKey: .customIconIsTemplate)
         try c.encode(appIcon, forKey: .appIcon)
         try c.encode(cascadeVisibleShortcut, forKey: .cascadeVisibleShortcut)
@@ -229,7 +244,7 @@ public struct CascadeSettings: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case sizeMode, widthPercent, heightPercent, revealTop, revealLeft, columns, rows, groupGap,
              groupingMode, collapseEmptyGroups, appGroups, displayMode, dragToSnap, snapModifier,
-             snapHotkeys, bordersEnabled, borderStyle, borderWidth, borderCustomColor, menuBarIcon, menuBarIconColor, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
+             snapHotkeys, bordersEnabled, borderStyle, borderWidth, borderCustomColor, menuBarIcon, menuBarIconColor, menuBarIconCustomColor, customIconIsTemplate, appIcon, cascadeVisibleShortcut, cascadeAllShortcut
     }
 }
 

@@ -30,12 +30,13 @@ enum MenuBarIcons {
     /// The icon to show for the given settings. Falls back to the default design if a custom image is missing.
     static func image(for settings: CascadeSettings) -> NSImage {
         image(settings.menuBarIcon, color: settings.menuBarIconColor, theme: settings.appIcon,
-              customTemplate: settings.customIconIsTemplate)
+              customColor: settings.menuBarIconCustomColor, customTemplate: settings.customIconIsTemplate)
     }
 
     static func image(_ style: MenuBarIconStyle, color: MenuBarIconColor = .monochrome, theme: AppIconStyle = .ocean,
+                      customColor: CascadeCore.RGBColor = CascadeSettings().menuBarIconCustomColor,
                       customTemplate: Bool = true) -> NSImage {
-        let palette = colors(color, theme: theme)
+        let palette = Palette.make(color, theme: theme, custom: customColor)
         switch style {
         case .custom:
             guard let custom = CustomIconStore.load() else { return drawn(.cascade, palette: palette) }
@@ -44,7 +45,9 @@ enum MenuBarIcons {
         case .symbolStack, .symbolLayers, .symbolWindows:
             var config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
             // Symbol layers run front to back: the front window gets the front color, as in the drawn designs.
-            if let palette { config = config.applying(NSImage.SymbolConfiguration(paletteColors: Array(palette.prefix(3).reversed()))) }
+            if let palette {
+                config = config.applying(NSImage.SymbolConfiguration(paletteColors: Array(palette.accents.prefix(3).reversed())))
+            }
             guard let symbol = NSImage(systemSymbolName: symbolNames[style]!, accessibilityDescription: "Cascade")?
                 .withSymbolConfiguration(config) else { return drawn(.cascade, palette: palette) }
             symbol.isTemplate = palette == nil
@@ -54,41 +57,92 @@ enum MenuBarIcons {
         }
     }
 
-    /// Window colors, back to front; nil means a monochrome template icon.
-    static func colors(_ color: MenuBarIconColor, theme: AppIconStyle) -> [NSColor]? {
+    static func title(_ color: MenuBarIconColor) -> String {
         switch color {
-        case .monochrome:
-            return nil
-        case .multicolor:
-            // Saturated mid-tones that read on both light and dark menu bars.
-            return [NSColor(srgbRed: 0.20, green: 0.78, blue: 0.35, alpha: 1),   // green
-                    NSColor(srgbRed: 0.04, green: 0.52, blue: 1.00, alpha: 1),   // blue
-                    NSColor(srgbRed: 1.00, green: 0.58, blue: 0.00, alpha: 1),   // orange
-                    NSColor(srgbRed: 1.00, green: 0.22, blue: 0.37, alpha: 1)]   // pink (4-window designs)
-        case .appTheme:
-            return AppIconRenderer.accentColors(theme)
+        case .multicolor: return "Multicolor"
+        case .bright: return "Bright"
+        case .dark: return "Dark"
+        case .highContrast: return "High contrast"
+        case .appTheme: return "App icon"
+        case .custom: return "Custom"
+        case .monochrome: return "Monochrome"
+        }
+    }
+
+    /// How a colored icon is painted. nil (from `make`) means a monochrome template icon.
+    struct Palette {
+        /// Window colors, back to front (title bars, and outlines unless `outline` is set).
+        let accents: [NSColor]
+        /// Fixed outline color for every window (high contrast), instead of the accent.
+        var outline: NSColor? = nil
+        /// A thin edge around each window so dark or pale colors still read on any menu bar.
+        var halo: NSColor? = nil
+
+        private static func rgb(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> NSColor {
+            NSColor(srgbRed: r, green: g, blue: b, alpha: 1)
+        }
+
+        static func make(_ color: MenuBarIconColor, theme: AppIconStyle, custom: CascadeCore.RGBColor) -> Palette? {
+            switch color {
+            case .monochrome:
+                return nil
+            case .multicolor:
+                // Saturated mid-tones that read on both light and dark menu bars.
+                return Palette(accents: [rgb(0.20, 0.78, 0.35), rgb(0.04, 0.52, 1.00), rgb(1.00, 0.58, 0.00), rgb(1.00, 0.22, 0.37)])
+            case .bright:
+                // Neon; a soft dark edge keeps the pale ones visible on light menu bars.
+                return Palette(accents: [rgb(0.25, 1.00, 0.30), rgb(0.00, 0.90, 1.00), rgb(1.00, 0.15, 0.85), rgb(1.00, 0.92, 0.00)],
+                               halo: NSColor(white: 0, alpha: 0.22))
+            case .dark:
+                // Deep tones; a light edge keeps them visible on dark menu bars.
+                return Palette(accents: [rgb(0.05, 0.42, 0.20), rgb(0.08, 0.20, 0.58), rgb(0.62, 0.08, 0.15), rgb(0.40, 0.10, 0.55)],
+                               halo: NSColor(white: 1, alpha: 0.75))
+            case .highContrast:
+                return Palette(accents: [rgb(1.00, 0.84, 0.00), rgb(0.00, 0.85, 1.00), rgb(1.00, 0.10, 0.70), rgb(0.30, 1.00, 0.20)],
+                               outline: .black, halo: .white)
+            case .appTheme:
+                return Palette(accents: AppIconRenderer.accentColors(theme))
+            case .custom:
+                return shades(of: rgb(custom.red, custom.green, custom.blue))
+            }
+        }
+
+        /// Back-to-front shades of one color (lighter behind, the picked color in front), so the windows
+        /// stay distinguishable. Very dark or very light picks get an edge so they read on any menu bar.
+        static func shades(of color: NSColor) -> Palette {
+            let c = color.usingColorSpace(.sRGB) ?? color
+            let front = c
+            let back = c.blended(withFraction: 0.45, of: .white) ?? c
+            let middle = c.blended(withFraction: 0.22, of: .white) ?? c
+            let deep = c.blended(withFraction: 0.3, of: .black) ?? c
+            let luminance = 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent
+            let halo: NSColor? = luminance < 0.25 ? NSColor(white: 1, alpha: 0.75)
+                : luminance > 0.8 ? NSColor(white: 0, alpha: 0.35) : nil
+            return Palette(accents: [back, middle, front, deep], halo: halo)
         }
     }
 
     /// Hand-drawn designs. With no palette they are template images (drawn in black; macOS tints them to
     /// match the menu bar). With a palette, each window gets a white body and a colored outline and title bar.
-    private static func drawn(_ style: MenuBarIconStyle, palette: [NSColor]? = nil) -> NSImage {
+    private static func drawn(_ style: MenuBarIconStyle, palette: Palette? = nil) -> NSImage {
         let image = NSImage(size: size, flipped: true) { _ in
             NSColor.black.setStroke()
             NSColor.black.setFill()
-            func color(_ i: Int) -> NSColor? { palette.map { $0[i % $0.count] } }
+            func paint(_ i: Int) -> WindowPaint? {
+                palette.map { WindowPaint(accent: $0.accents[i % $0.accents.count], outline: $0.outline, halo: $0.halo) }
+            }
             switch style {
             case .outline:
                 for i in 0..<3 {
                     window(NSRect(x: 1 + CGFloat(i) * 3, y: 1 + CGFloat(i) * 2.5, width: 10, height: 8.5), titleBar: false,
-                           color: color(i))
+                           paint: paint(i))
                 }
             case .cards:
                 // A vertical stack: each card further back is narrower, like a deck seen from the front.
                 for i in 0..<3 {
                     let inset = CGFloat(2 - i) * 1.5
                     window(NSRect(x: 2 + inset, y: 1 + CGFloat(i) * 3, width: 14 - inset * 2, height: 8.5), titleBar: true,
-                           color: color(i))
+                           paint: paint(i))
                 }
             case .groups:
                 // Two small cascades side by side: cascade groups.
@@ -96,22 +150,18 @@ enum MenuBarIcons {
                     for i in 0..<2 {
                         let x = 0.75 + CGFloat(column) * 8.75 + CGFloat(i) * 2.5
                         window(NSRect(x: x, y: 2 + CGFloat(i) * 3, width: 5.5, height: 7), titleBar: true, radius: 1,
-                               color: color(column * 2 + i))
+                               paint: paint(column * 2 + i))
                     }
                 }
             case .solid:
                 for i in 0..<3 {
                     let rect = NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9)
-                    window(rect, titleBar: i < 2, color: color(i))
-                    if i == 2 {
-                        (color(i) ?? .black).setFill()
-                        NSBezierPath(roundedRect: rect, xRadius: 1.5, yRadius: 1.5).fill()
-                    }
+                    window(rect, titleBar: i < 2, paint: paint(i), solid: i == 2)
                 }
             default:   // .cascade
                 for i in 0..<3 {
                     window(NSRect(x: 1 + CGFloat(i) * 2.5, y: 1 + CGFloat(i) * 2.5, width: 11, height: 9), titleBar: true,
-                           color: color(i))
+                           paint: paint(i))
                 }
             }
             return true
@@ -121,25 +171,49 @@ enum MenuBarIcons {
         return image
     }
 
+    private struct WindowPaint {
+        let accent: NSColor
+        let outline: NSColor?
+        let halo: NSColor?
+    }
+
     /// One window. Whatever is underneath is erased first, so back windows show only their exposed edges.
-    private static func window(_ rect: NSRect, titleBar: Bool, radius: CGFloat = 1.5, color: NSColor? = nil) {
+    private static func window(_ rect: NSRect, titleBar: Bool, radius: CGFloat = 1.5, paint: WindowPaint? = nil,
+                               solid: Bool = false) {
         let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         NSGraphicsContext.current?.compositingOperation = .clear
         path.fill()
         NSGraphicsContext.current?.compositingOperation = .sourceOver
-        if let color {
-            NSColor.white.setFill()
-            path.fill()
-            color.setStroke()
-            color.setFill()
-        } else {
+        path.lineWidth = 1.2
+        guard let paint else {
+            // Template: black, tinted by macOS.
             NSColor.black.setStroke()
             NSColor.black.setFill()
+            path.stroke()
+            if solid { path.fill() }
+            if titleBar { NSBezierPath(rect: NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: 2.2)).fill() }
+            return
         }
-        path.lineWidth = 1.2
+        if let halo = paint.halo {
+            let edge = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+            edge.lineWidth = 2.6
+            halo.setStroke()
+            edge.stroke()
+        }
+        (solid ? paint.accent : NSColor.white).setFill()
+        path.fill()
+        (paint.outline ?? paint.accent).setStroke()
         path.stroke()
         if titleBar {
-            NSBezierPath(rect: NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: 2.2)).fill()
+            paint.accent.setFill()
+            // Taller with a black outline, which otherwise covers most of the color.
+            let bar = NSRect(x: rect.minX, y: rect.minY, width: rect.width, height: paint.outline == nil ? 2.2 : 3.4)
+            NSBezierPath(rect: bar).fill()
+            if let outline = paint.outline {
+                // Keep the outline crisp over the colored title bar.
+                outline.setStroke()
+                path.stroke()
+            }
         }
     }
 }

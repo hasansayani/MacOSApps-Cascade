@@ -64,8 +64,9 @@ A live preview at the top of Settings shows the resulting layout.
   Turn borders off in Settings or from the menu (*Show Window Borders*). Borders are left out of
   screenshots and screen recordings.
 - **Appearance**: choose the menu bar icon (five designs, three macOS symbols, or your own image)
-  and its color: *Multicolor* (the default, easy to spot among other menu bar icons), *Match app
-  icon*, or *Monochrome*. Pick an app icon color (Ocean, Graphite, Sunset, Forest, Grape). A custom
+  and its color: *Multicolor* (the default, easy to spot among other menu bar icons), *Bright*
+  (neon), *Dark* (deep tones), *High contrast* (black outlines with pure colors), *App icon*,
+  *Custom* (shades of any color you pick), or *Monochrome*. Pick an app icon color (Ocean, Graphite, Sunset, Forest, Grape). A custom
   image can follow the menu bar's light/dark color or keep its own colors.
 - **Launch at login**.
 

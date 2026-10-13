@@ -184,6 +184,17 @@ test("settings round-trip and tolerate missing keys") {
     let iconsBack = try! JSONDecoder().decode(CascadeSettings.self, from: try! JSONEncoder().encode(icons))
     check(iconsBack == icons, "icon choices round trip")
     check(CascadeSettings().menuBarIconColor == .multicolor, "menu bar icon is colored by default")
+    for color in MenuBarIconColor.allCases {
+        var c = CascadeSettings()
+        c.menuBarIconColor = color
+        let back = try! JSONDecoder().decode(CascadeSettings.self, from: try! JSONEncoder().encode(c))
+        check(back.menuBarIconColor == color, "\(color) round trips")
+    }
+    var custom = CascadeSettings()
+    custom.menuBarIconColor = .custom
+    custom.menuBarIconCustomColor = RGBColor(red: 0.1, green: 0.6, blue: 0.5)
+    check(try! JSONDecoder().decode(CascadeSettings.self, from: try! JSONEncoder().encode(custom)) == custom,
+          "custom icon color round trips")
     let older = try! JSONDecoder().decode(CascadeSettings.self, from: Data(#"{"menuBarIcon": "cards"}"#.utf8))
     check(older.menuBarIcon == .cards && older.menuBarIconColor == .multicolor, "settings from 2.2.0 pick up color")
     let unknown = try! JSONDecoder().decode(CascadeSettings.self, from: Data(#"{"menuBarIcon": "rainbow"}"#.utf8))

@@ -147,14 +147,11 @@ struct SettingsView: View {
 
             Section {
                 MenuBarIconPicker(selection: s.menuBarIcon, customTemplate: s.customIconIsTemplate,
-                                  color: settings.menuBarIconColor, theme: settings.appIcon)
+                                  color: settings.menuBarIconColor, theme: settings.appIcon,
+                                  customColor: settings.menuBarIconCustomColor)
                 if settings.menuBarIcon != .custom {
-                    Picker("Icon color", selection: s.menuBarIconColor) {
-                        Text("Multicolor").tag(MenuBarIconColor.multicolor)
-                        Text("Match app icon").tag(MenuBarIconColor.appTheme)
-                        Text("Monochrome").tag(MenuBarIconColor.monochrome)
-                    }
-                    .pickerStyle(.segmented)
+                    IconColorPicker(selection: s.menuBarIconColor, style: settings.menuBarIcon,
+                                    theme: settings.appIcon, customColor: s.menuBarIconCustomColor)
                 }
                 AppIconPicker(selection: s.appIcon)
             } header: {
@@ -265,6 +262,7 @@ private struct MenuBarIconPicker: View {
     @Binding var customTemplate: Bool
     var color: MenuBarIconColor = .monochrome
     var theme: AppIconStyle = .ocean
+    var customColor = CascadeSettings().menuBarIconCustomColor
     /// Bumped when a new custom image is chosen so tiles redraw.
     @State private var customRevision = 0
 
@@ -322,11 +320,73 @@ private struct MenuBarIconPicker: View {
         if style == .custom && CustomIconStore.load() == nil {
             Image(systemName: "plus").foregroundStyle(.secondary)
         } else {
-            let image = MenuBarIcons.image(style, color: color, theme: theme, customTemplate: customTemplate)
+            let image = MenuBarIcons.image(style, color: color, theme: theme, customColor: customColor,
+                                           customTemplate: customTemplate)
             Image(nsImage: image)
                 .renderingMode(image.isTemplate ? .template : .original)
                 .foregroundStyle(.primary)
         }
+    }
+}
+
+/// Color schemes for the menu bar icon, previewed on light and dark menu bar strips, plus a custom color.
+private struct IconColorPicker: View {
+    @Binding var selection: MenuBarIconColor
+    let style: MenuBarIconStyle
+    let theme: AppIconStyle
+    @Binding var customColor: CascadeCore.RGBColor
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Icon color")
+            LazyVGrid(columns: columns, spacing: 10) {
+                ForEach(MenuBarIconColor.allCases, id: \.self) { tile($0) }
+            }
+            if selection == .custom {
+                ColorPicker("Custom color", selection: Binding(
+                    get: { Color(.sRGB, red: customColor.red, green: customColor.green, blue: customColor.blue) },
+                    set: { color in
+                        if let c = NSColor(color).usingColorSpace(.sRGB) {
+                            customColor = CascadeCore.RGBColor(red: c.redComponent, green: c.greenComponent, blue: c.blueComponent)
+                        }
+                    }), supportsOpacity: false)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func tile(_ scheme: MenuBarIconColor) -> some View {
+        let selected = selection == scheme
+        let image = MenuBarIcons.image(style == .custom ? .cascade : style, color: scheme, theme: theme,
+                                       customColor: customColor)
+        return Button { selection = scheme } label: {
+            VStack(spacing: 4) {
+                // The same icon on a light and a dark menu bar strip.
+                HStack(spacing: 0) {
+                    ForEach([false, true], id: \.self) { dark in
+                        ZStack {
+                            Rectangle().fill(dark ? Color(white: 0.16) : Color(white: 0.93))
+                            Image(nsImage: image)
+                                .renderingMode(image.isTemplate ? .template : .original)
+                                .foregroundStyle(dark ? Color.white : Color.black)
+                        }
+                    }
+                }
+                .frame(height: 30)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.25), lineWidth: selected ? 2 : 1))
+                Text(MenuBarIcons.title(scheme))
+                    .font(.caption2)
+                    .foregroundStyle(selected ? .primary : .secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(MenuBarIcons.title(scheme)) icon color")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
