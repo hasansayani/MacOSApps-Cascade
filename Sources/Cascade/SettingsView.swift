@@ -124,17 +124,8 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                     if settings.borderStyle == .custom {
-                        ColorPicker("Border color", selection: Binding(
-                            get: {
-                                let c = settings.borderCustomColor
-                                return Color(.sRGB, red: c.red, green: c.green, blue: c.blue)
-                            },
-                            set: { color in
-                                if let c = NSColor(color).usingColorSpace(.sRGB) {
-                                    store.settings.borderCustomColor = RGBColor(red: c.redComponent, green: c.greenComponent,
-                                                                                blue: c.blueComponent)
-                                }
-                            }), supportsOpacity: false)
+                        ColorPicker("Border color", selection: colorBinding($store.settings.borderCustomColor),
+                                    supportsOpacity: false)
                     }
                     PointSlider(title: "Thickness", value: s.borderWidth, range: CascadeSettings.borderWidthRange)
                     if let borders { BorderSwatches(borders: borders) }
@@ -345,13 +336,7 @@ private struct IconColorPicker: View {
                 ForEach(MenuBarIconColor.allCases, id: \.self) { tile($0) }
             }
             if selection == .custom {
-                ColorPicker("Custom color", selection: Binding(
-                    get: { Color(.sRGB, red: customColor.red, green: customColor.green, blue: customColor.blue) },
-                    set: { color in
-                        if let c = NSColor(color).usingColorSpace(.sRGB) {
-                            customColor = CascadeCore.RGBColor(red: c.redComponent, green: c.greenComponent, blue: c.blueComponent)
-                        }
-                    }), supportsOpacity: false)
+                ColorPicker("Custom color", selection: colorBinding($customColor), supportsOpacity: false)
             }
         }
         .padding(.vertical, 4)
@@ -425,10 +410,30 @@ private struct AppIconPicker: View {
     }
 }
 
+/// Bridges a stored sRGB color to a SwiftUI color picker.
+///
+/// Converting Color → NSColor → sRGB and back is not exact, and ColorPicker reports the color it was
+/// given back through `set`. Writing those tiny differences would change the settings, redraw the
+/// view, and loop forever (pegging the CPU). Changes smaller than one 8-bit step are ignored.
+private func colorBinding(_ stored: Binding<CascadeCore.RGBColor>) -> Binding<Color> {
+    Binding(
+        get: { Color(.sRGB, red: stored.wrappedValue.red, green: stored.wrappedValue.green, blue: stored.wrappedValue.blue) },
+        set: { color in
+            guard let c = NSColor(color).usingColorSpace(.sRGB) else { return }
+            let new = CascadeCore.RGBColor(red: Double(c.redComponent), green: Double(c.greenComponent), blue: Double(c.blueComponent))
+            let old = stored.wrappedValue
+            let step = 1.0 / 255
+            guard abs(new.red - old.red) > step || abs(new.green - old.green) > step || abs(new.blue - old.blue) > step else { return }
+            stored.wrappedValue = new
+        })
+}
+
 /// Manual mode: pin running apps (and apps with existing rules) to groups.
 private struct AppGroupRules: View {
     @Binding var rules: [String: Int]
     let groupCount: Int
+    /// Built once and refreshed when apps launch or quit, not on every redraw (it queries LaunchServices).
+    @State private var apps: [AppRow] = []
 
     private struct AppRow: Identifiable {
         let id: String
@@ -436,7 +441,7 @@ private struct AppGroupRules: View {
         let icon: NSImage?
     }
 
-    private var apps: [AppRow] {
+    private func loadApps() -> [AppRow] {
         var rows: [String: AppRow] = [:]
         for app in NSWorkspace.shared.runningApplications where app.activationPolicy == .regular {
             guard let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier else { continue }
@@ -453,6 +458,7 @@ private struct AppGroupRules: View {
     var body: some View {
         Text("Pin apps to groups. Unpinned apps are balanced across the remaining space.")
             .font(.caption).foregroundStyle(.secondary)
+            .onAppear { apps = loadApps() }
         ForEach(apps) { app in
             Picker(selection: Binding(
                 get: { rules[app.id] ?? -1 },
@@ -466,6 +472,12 @@ private struct AppGroupRules: View {
                     Text(app.name)
                 }
             }
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didLaunchApplicationNotification)) { _ in
+            apps = loadApps()
+        }
+        .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didTerminateApplicationNotification)) { _ in
+            apps = loadApps()
         }
     }
 }

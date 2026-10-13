@@ -156,6 +156,9 @@ final class BorderController {
         mouseMonitor = nil
         safetyTimer?.invalidate()
         dragTimer?.invalidate()
+        dragTimer = nil
+        followUpWork.forEach { $0.cancel() }
+        followUpWork = []
         overlays.values.forEach { $0.close() }
         overlays.removeAll()
         currentColors = []
@@ -229,10 +232,19 @@ final class BorderController {
                 self?.refresh()
             }
         }
-        if followUps {
-            for delay in [0.2, 0.5] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.refresh() }
-            }
+        if followUps { scheduleFollowUps() }
+    }
+
+    /// One pending set of follow-up checks at a time: a burst of window events (an app restoring ten
+    /// windows, a busy Electron app) pushes the follow-ups later instead of stacking dozens of refreshes.
+    private var followUpWork: [DispatchWorkItem] = []
+
+    private func scheduleFollowUps() {
+        followUpWork.forEach { $0.cancel() }
+        followUpWork = [0.2, 0.5].map { delay in
+            let work = DispatchWorkItem { [weak self] in self?.refresh() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+            return work
         }
     }
 
