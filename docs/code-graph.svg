@@ -110,7 +110,7 @@
 <path fill="white" stroke="#444444" stroke-width="1.2" d="M681.59,-510.6C681.59,-510.6 488.42,-510.6 488.42,-510.6 482.42,-510.6 476.42,-504.6 476.42,-498.6 476.42,-498.6 476.42,-470.08 476.42,-470.08 476.42,-464.08 482.42,-458.08 488.42,-458.08 488.42,-458.08 681.59,-458.08 681.59,-458.08 687.59,-458.08 693.59,-464.08 693.59,-470.08 693.59,-470.08 693.59,-498.6 693.59,-498.6 693.59,-504.6 687.59,-510.6 681.59,-510.6"/>
 <text xml:space="preserve" text-anchor="start" x="547.12" y="-494.44" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.00">Borders.swift</text>
 <text xml:space="preserve" text-anchor="start" x="489.38" y="-484.34" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#555555">BorderController, IconColors, BorderOverlay</text>
-<text xml:space="preserve" text-anchor="start" x="565.5" y="-474.34" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#555555">462 lines</text>
+<text xml:space="preserve" text-anchor="start" x="565.5" y="-474.34" font-family="Helvetica,sans-Serif" font-size="10.00" fill="#555555">476 lines</text>
 <text xml:space="preserve" text-anchor="start" x="548.25" y="-465.29" font-family="Helvetica,sans-Serif" font-size="9.00" fill="#b35c00">▸ Accessibility API</text>
 </g>
 <!-- Cascade_Borders&#45;&gt;Cascade_Accessibility -->

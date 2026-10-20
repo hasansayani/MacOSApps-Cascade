@@ -14,7 +14,7 @@ digraph Cascade {
     label=<<b>Cascade</b>  <font color="#666666">App</font>>;
     style="rounded,filled"; fillcolor="#f4f4f4"; color="#555555"; penwidth=1.5; margin=14;
     Cascade_Accessibility [label=<<b>Accessibility.swift</b><br/><font point-size="10" color="#555555">Display, Permissions<br/>150 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
-    Cascade_Borders [label=<<b>Borders.swift</b><br/><font point-size="10" color="#555555">BorderController, IconColors, BorderOverlay<br/>462 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
+    Cascade_Borders [label=<<b>Borders.swift</b><br/><font point-size="10" color="#555555">BorderController, IconColors, BorderOverlay<br/>476 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
     Cascade_DragSnapper [label=<<b>DragSnapper.swift</b><br/><font point-size="10" color="#555555">DragSnapper, SnapOverlay, OverlayView<br/>150 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
     Cascade_Engine [label=<<b>Engine.swift</b><br/><font point-size="10" color="#555555">Engine<br/>218 lines</font><br/><font point-size="9.5" color="#b35c00">▸ Accessibility API</font>>];
     Cascade_Icons [label=<<b>Icons.swift</b><br/><font point-size="10" color="#555555">MenuBarIcons, CustomIconStore, AppIconRenderer<br/>341 lines</font>>];
