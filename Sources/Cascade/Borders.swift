@@ -241,7 +241,8 @@ final class BorderController {
 
     private func scheduleFollowUps() {
         followUpWork.forEach { $0.cancel() }
-        followUpWork = [0.2, 0.5].map { delay in
+        // 1.0 outlasts the full-screen enter/exit animation (~0.7 s).
+        followUpWork = [0.2, 0.5, 1.0].map { delay in
             let work = DispatchWorkItem { [weak self] in self?.refresh() }
             DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
             return work
@@ -294,13 +295,33 @@ final class BorderController {
         }
 
         let colors = colorsForApps(in: windows, regular: regular)
+        let fullScreen = fullScreenDisplays(windows: windows, displays: displays)
         let backToFront = Array(windows.reversed())
         for display in displays {
             guard let overlay = overlays[display.id] else { continue }
-            let items = backToFront.filter { $0.frame.intersects(display.frame.insetBy(dx: -20, dy: -20)) }
+            // No borders on a display showing a full-screen window: there is nothing to outline.
+            let items = fullScreen.contains(display.id) ? [] : backToFront
+                .filter { $0.frame.intersects(display.frame.insetBy(dx: -20, dy: -20)) }
                 .map { BorderOverlay.Item(frame: $0.frame, color: $0.isTarget ? colors[$0.pid] : nil) }
             overlay.update(items: items, style: settings.borderStyle, width: CGFloat(settings.borderWidth))
         }
+    }
+
+    /// Displays currently showing a full-screen window, or animating into or out of full screen.
+    private func fullScreenDisplays(windows: [WindowInfo], displays: [Display]) -> Set<CGDirectDisplayID> {
+        // Settled: only a full-screen window covers the whole display, menu bar area included.
+        var result = Set(displays.filter { display in
+            windows.contains { $0.isTarget && $0.frame.insetBy(dx: -1, dy: -1).contains(display.frame) }
+        }.map(\.id))
+        // Animating: the frame is mid-transition (and would draw a squashed outline), but the front
+        // window already reports AXFullScreen. Skipped while dragging to keep 60 Hz refreshes cheap.
+        if dragTimer == nil, let front = windows.first(where: \.isTarget),
+           let window = AXUIElement.focusedWindow(of: front.pid),
+           (window.attr("AXFullScreen") as Bool?) == true,
+           let display = Display.containing(CGPoint(x: front.frame.midX, y: front.frame.midY), in: displays) {
+            result.insert(display.id)
+        }
+        return result
     }
 
     /// pid → border color, distinct per app among the apps that currently have windows.
